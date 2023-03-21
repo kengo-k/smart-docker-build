@@ -37,7 +37,7 @@ runs:
         echo "latest commit: ${{ github.sha }}"
         changed_dockerfiles=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep Dockerfile || true)
         echo $changed_dockerfiles
-        echo "changed_dockerfiles=$changed_dockerfiles >> $GITHUB_ENV"
+        echo "changed_dockerfiles=$changed_dockerfiles" >> $GITHUB_ENV
 
     - name: checkout latest
       if: ${{ env.changed_dockerfiles != '' }}
