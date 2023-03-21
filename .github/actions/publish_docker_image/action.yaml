@@ -1,0 +1,78 @@
+name: 'Publish Docker images'
+description: 'Dockerfileに変更があった場合イメージをビルドしてGHCRにPUSHする'
+# inputs:
+#   previous:
+#     description: 'Previous Commit ID'
+#     required: true
+#   latest:
+#     description: 'Latest Commit ID'
+#     required: true
+
+runs:
+  using: 'composite'
+  steps:
+    # - name: 'Print greeting'
+    #   run: echo "${{ inputs.greeting }}, ${{ inputs.name }}!"
+    #   shell: bash
+
+    # 前回PUSHされた際のコミットを取得する
+    - name: checkout before commit
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.before }}
+
+    # 前回PUSHされたコミットから最新のコミットまでを取得する
+    - name: fetch changed files between before and latest
+      run: |
+        git fetch origin $GITHUB_SHA:refs/remotes/origin/main
+        git checkout $GITHUB_SHA
+
+    # 変更のあったすべてのDockerfileの一覧を取得する
+    - name: find changed Dockerfiles
+      id: find_changed_dockerfiles
+      run: |
+        echo "previous commit: ${{ github.event.before }}"
+        echo "latest commit: ${{ github.sha }}"
+        changed_dockerfiles=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep Dockerfile || true)
+        echo $changed_dockerfiles
+        echo "changed_dockerfiles=$changed_dockerfiles >> $GITHUB_ENV"
+
+    - name: checkout latest
+      if: ${{ env.changed_dockerfiles != '' }}
+      uses: actions/checkout@v2
+
+    # イメージのタグに付与する日付文字列を変数にセットしておく
+    - name: set up environment variables
+      if: ${{ env.changed_dockerfiles != '' }}
+      run: |
+        echo "DATE_TAG=$(TZ=Asia/Tokyo date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+
+    - name: set up docker
+      if: ${{ env.changed_dockerfiles != '' }}
+      uses: docker/setup-buildx-action@v1
+
+    - name: login to ghcr
+      if: ${{ env.changed_dockerfiles != '' }}
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }}
+
+    - name: publish
+      if: ${{ env.changed_dockerfiles != '' }}
+      run: |
+        echo "prev output: ${{ env.changed_dockerfiles }}"
+        for dockerfile in ${{ env.changed_dockerfiles }}; do
+          context=$(dirname $dockerfile)
+          image=$(dirname $dockerfile | xargs basename)
+          echo "image: $image"
+          taglist="ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7},ghcr.io/${{ github.actor }}/$image:latest"
+          tags=$(echo "$taglist" | sed 's/^/-t /; s/,/ -t /g')
+          echo "docker build $tags -f $dockerfile $context"
+          docker build $tags -f $dockerfile $(dirname $dockerfile)
+          for tag in $(echo $taglist | tr "," " "); do
+            echo "docker push $tag"
+            docker push $tag
+          done
+        done
