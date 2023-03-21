@@ -23,14 +23,15 @@ runs:
 
     # 前回PUSHされたコミットから最新のコミットまでを取得する
     - name: fetch changed files between before and latest
+      shell: bash
       run: |
         git fetch origin $GITHUB_SHA:refs/remotes/origin/main
-        git checkout $GITHUB_SHA
-      shell: bash  
+        git checkout $GITHUB_SHA  
 
     # 変更のあったすべてのDockerfileの一覧を取得する
     - name: find changed Dockerfiles
       id: find_changed_dockerfiles
+      shell: bash
       run: |
         echo "previous commit: ${{ github.event.before }}"
         echo "latest commit: ${{ github.sha }}"
@@ -45,6 +46,7 @@ runs:
     # イメージのタグに付与する日付文字列を変数にセットしておく
     - name: set up environment variables
       if: ${{ env.changed_dockerfiles != '' }}
+      shell: bash
       run: |
         echo "DATE_TAG=$(TZ=Asia/Tokyo date +'%Y%m%d%H%M')" >> $GITHUB_ENV
 
@@ -62,6 +64,7 @@ runs:
 
     - name: publish
       if: ${{ env.changed_dockerfiles != '' }}
+      shell: bash
       run: |
         echo "prev output: ${{ env.changed_dockerfiles }}"
         for dockerfile in ${{ env.changed_dockerfiles }}; do
