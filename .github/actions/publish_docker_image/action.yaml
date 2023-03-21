@@ -1,9 +1,9 @@
 name: 'Publish Docker images'
 description: 'Dockerfileに変更があった場合イメージをビルドしてGHCRにPUSHする'
-# inputs:
-#   previous:
-#     description: 'Previous Commit ID'
-#     required: true
+inputs:
+  token:
+    description: 'token'
+    required: true
 #   latest:
 #     description: 'Latest Commit ID'
 #     required: true
@@ -60,7 +60,7 @@ runs:
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
-        password: ${{ secrets.GHCR_TOKEN }}
+        password: ${{ inputs.token }}
 
     - name: publish
       if: ${{ env.changed_dockerfiles != '' }}
