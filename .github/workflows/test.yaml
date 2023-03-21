@@ -1,0 +1,13 @@
+name: 'test'
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  greet:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Use custom action with parameters'
+        uses: kengo-k/github-custom-actions/.github/actions/publish_docker_image@main
