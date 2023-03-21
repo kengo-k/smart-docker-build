@@ -1,4 +1,4 @@
-name: 'test'
+name: 'test to publish docker image'
 
 on:
   push:
