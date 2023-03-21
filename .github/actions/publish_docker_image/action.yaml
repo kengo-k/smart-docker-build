@@ -26,6 +26,7 @@ runs:
       run: |
         git fetch origin $GITHUB_SHA:refs/remotes/origin/main
         git checkout $GITHUB_SHA
+      shell: bash  
 
     # 変更のあったすべてのDockerfileの一覧を取得する
     - name: find changed Dockerfiles
