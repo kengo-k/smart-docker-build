@@ -19,7 +19,8 @@ runs:
     - name: fetch changed files between before and latest
       shell: bash
       run: |
-        git fetch origin $GITHUB_SHA:refs/remotes/origin/${{ github.head_ref }}
+        BRANCH_NAME=${GITHUB_REF#refs/heads/}
+        git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
         git checkout $GITHUB_SHA  
 
     # 変更のあったすべてのDockerfileの一覧を取得する
