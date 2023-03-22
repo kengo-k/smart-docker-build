@@ -4,16 +4,10 @@ inputs:
   token:
     description: 'token'
     required: true
-#   latest:
-#     description: 'Latest Commit ID'
-#     required: true
 
 runs:
   using: 'composite'
   steps:
-    # - name: 'Print greeting'
-    #   run: echo "${{ inputs.greeting }}, ${{ inputs.name }}!"
-    #   shell: bash
 
     # 前回PUSHされた際のコミットを取得する
     - name: checkout before commit
