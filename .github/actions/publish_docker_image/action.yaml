@@ -20,6 +20,7 @@ runs:
       shell: bash
       run: |
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
+        echo "target branch: $BRANCH_NAME"
         git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
         git checkout $GITHUB_SHA  
 
