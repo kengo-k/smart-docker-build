@@ -19,7 +19,7 @@ runs:
     - name: fetch changed files between before and latest
       shell: bash
       run: |
-        git fetch origin $GITHUB_SHA:refs/remotes/origin/main
+        git fetch origin $GITHUB_SHA:refs/remotes/origin/${{ github.head_ref }}
         git checkout $GITHUB_SHA  
 
     # 変更のあったすべてのDockerfileの一覧を取得する
