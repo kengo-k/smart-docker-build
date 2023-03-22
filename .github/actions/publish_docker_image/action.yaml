@@ -6,7 +6,7 @@ inputs:
     required: true
   use_image_tag_by_branch:
     required: false
-    default: false
+    default: true
   use_image_tag_by_tag:
     required: false
     default: false
@@ -29,7 +29,7 @@ runs:
       shell: bash
       run: |
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        echo "target branch: $BRANCH_NAME"
+        echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
         git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
         git checkout $GITHUB_SHA  
 
@@ -80,6 +80,9 @@ runs:
           if [ "${{ inputs.use_image_tag_by_default }}" == "true" ]; then
             taglist+=("ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7}")
           fi
+          if [ "${{ inputs.use_image_tag_by_branch }}" == "true" ]; then
+            taglist+=("ghcr.io/${{ github.actor }}/$image:${{ env.branch }}")
+          fi          
           taglist+=("ghcr.io/${{ github.actor }}/$image:latest")
           #taglist="ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7},ghcr.io/${{ github.actor }}/$image:latest"
           taglist=$(IFS=,; echo "${taglist[*]}")
