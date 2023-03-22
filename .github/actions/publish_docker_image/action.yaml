@@ -4,6 +4,15 @@ inputs:
   token:
     description: 'token'
     required: true
+  use_image_tag_by_branch:
+    required: false
+    default: false
+  use_image_tag_by_tag:
+    required: false
+    default: false
+  use_image_tag_by_default:
+    required: false
+    default: true
 
 runs:
   using: 'composite'
@@ -67,7 +76,13 @@ runs:
           context=$(dirname $dockerfile)
           image=$(dirname $dockerfile | xargs basename)
           echo "image: $image"
-          taglist="ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7},ghcr.io/${{ github.actor }}/$image:latest"
+          taglist=()
+          if [ "${{ inputs.use_image_tag_by_default }}" == "true" ]; then
+            taglist+=("ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7}")
+          fi
+          taglist+=("ghcr.io/${{ github.actor }}/$image:latest")
+          #taglist="ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7},ghcr.io/${{ github.actor }}/$image:latest"
+          taglist=$(IFS=,; echo "${taglist[*]}")
           tags=$(echo "$taglist" | sed 's/^/-t /; s/,/ -t /g')
           echo "docker build $tags -f $dockerfile $context"
           docker build $tags -f $dockerfile $(dirname $dockerfile)
