@@ -2,8 +2,6 @@ name: 'test to publish docker image'
 
 on:
   push:
-    branches:
-      - main
 
 jobs:
   test:
