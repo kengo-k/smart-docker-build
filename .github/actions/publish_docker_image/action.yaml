@@ -32,7 +32,7 @@ runs:
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
         echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
         git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
-        git checkout $GITHUB_SHA  
+        git checkout $GITHUB_SHA
 
     # 変更のあったすべてのDockerfileの一覧を取得する
     - name: find changed Dockerfiles
@@ -77,12 +77,20 @@ runs:
           context=$(dirname $dockerfile)
           image=$(dirname $dockerfile | xargs basename)
           echo "image: $image"
+        
           taglist=()
           if [ "${{ inputs.use_image_tag_by_default }}" == "true" ]; then
             taglist+=("ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7}")
           fi
           if [ "${{ inputs.use_image_tag_by_branch }}" == "true" ]; then
             taglist+=("ghcr.io/${{ github.actor }}/$image:${{ env.branch }}")
+          fi          
+          if [ "${{ inputs.use_image_tag_by_tag }}" == "true" ]; then
+            tag=$(git tag --points-at $GITHUB_SHA)
+            if [[ -n "$tag" ]]; then
+              echo "Latest commit has tag: $tag"
+              taglist+=("ghcr.io/${{ github.actor }}/$image:$tag")
+            fi
           fi          
           taglist+=("ghcr.io/${{ github.actor }}/$image:latest")
           #taglist="ghcr.io/${{ github.actor }}/$image:${{ env.DATE_TAG }}-${GITHUB_SHA:0:7},ghcr.io/${{ github.actor }}/$image:latest"
@@ -95,3 +103,11 @@ runs:
             docker push $tag
           done
         done
+
+
+
+                  # Get the latest commit SHA
+          latest_commit_sha=$(git rev-parse HEAD)
+
+          # Check if the latest commit has a tag and get the tag
+
