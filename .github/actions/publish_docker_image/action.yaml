@@ -9,7 +9,7 @@ inputs:
     default: true
   use_image_tag_by_tag:
     required: false
-    default: false
+    default: true
   use_image_tag_by_default:
     required: false
     default: true
