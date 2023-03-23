@@ -28,6 +28,7 @@ runs:
     - name: fetch changed files between before and latest
       shell: bash
       run: |
+        echo "GITHUB_REF: $GITHUB_REF"
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
         echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
         git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
