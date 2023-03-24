@@ -35,7 +35,7 @@ runs:
       shell: bash
       run: |
         if [[ $GITHUB_REF == refs/heads/* ]]; then
-          echo "::info:: push_event_type: branch"
+          echo "[INFO] push_event_type: branch"
           echo "push_event_type=BRANCH" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == refs/tags/* ]]; then
           echo "::info:: push_event_type: tag -----"
