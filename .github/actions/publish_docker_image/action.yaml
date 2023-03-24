@@ -32,6 +32,7 @@ runs:
 
     # PUSH対象がブランチであるかタグであるかを判定する
     - name: Determine if push event is for branch or tag
+      shell: bash
       run: |
         if [[ $GITHUB_REF == refs/heads/* ]]; then
           echo "push_event_type=BRANCH" >> $GITHUB_ENV
@@ -41,6 +42,7 @@ runs:
     
     # PUSH対象がタグであった場合、リポジトリ内の全てのDockerfileの一覧を取得する
     - name: Determine if push event is for branch or tag
+      shell: bash
       if: ${{ env.push_event_type = 'TAG' && inputs.use_image_tag_by_tag == "true"}}
       run: |
         changed_dockerfiles=$(find . -type f -name 'Dockerfile' || true)
