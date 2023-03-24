@@ -93,7 +93,7 @@ runs:
           taglist="$taglist $BRANCH_NAME"
         fi        
         echo "[DEBUG] target image tags: $taglist"  
-        echo "tag_list=$taglist" >> $GITHUB_ENV
+        echo "taglist=$taglist" >> $GITHUB_ENV
 
     # ビルド対象のDockerfileの一覧とイメージタグの一覧を使用してイメージのビルドとPUSHを行う
     - name: publish
