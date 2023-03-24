@@ -43,7 +43,7 @@ runs:
     # PUSH対象がタグであった場合、リポジトリ内の全てのDockerfileの一覧を取得する
     - name: Determine if push event is for branch or tag
       shell: bash
-      if: ${{ env.push_event_type = 'TAG' && inputs.use_image_tag_by_tag == "true"}}
+      if: ${{ env.push_event_type == 'TAG' && inputs.use_image_tag_by_tag == "true"}}
       run: |
         changed_dockerfiles=$(find . -type f -name 'Dockerfile' || true)
         echo $changed_dockerfiles
@@ -53,14 +53,14 @@ runs:
 
     # PUSH対象がブランチの場合、前回PUSHされた際のコミットを取得する
     - name: checkout before commit
-      if: ${{ env.push_event_type = 'BRANCH' }}
+      if: ${{ env.push_event_type == 'BRANCH' }}
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.before }}
 
     # PUSH対象がブランチの場合、前回のPUSHから今回のPUSHまでの間に変更された全てのDockerfileの一覧を取得する
     - name: find changed Dockerfiles
-      if: ${{ env.push_event_type = 'BRANCH' }}
+      if: ${{ env.push_event_type == 'BRANCH' }}
       shell: bash
       run: |
         # get target branch name
