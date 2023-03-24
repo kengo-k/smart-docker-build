@@ -108,7 +108,7 @@ runs:
           echo "docker build $tags -f $dockerfile $context"
           docker build $tags -f $dockerfile $(dirname $dockerfile)
           for tag in $taglist; do
-            echo "docker push $tag"
-            docker push $tag
+            echo "docker push ghcr.io/${{ github.actor }}/$image:$tag"
+            docker push ghcr.io/${{ github.actor }}/$image:$tag
           done
         done
