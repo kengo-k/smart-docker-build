@@ -35,10 +35,10 @@ runs:
       shell: bash
       run: |
         if [[ $GITHUB_REF == refs/heads/* ]]; then
-          echo "[INFO] push_event_type: branch"
+          echo "[DEBUG] push_event_type: branch"
           echo "push_event_type=BRANCH" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == refs/tags/* ]]; then
-          echo "::info:: push_event_type: tag -----"
+          echo "[DEBUG] push_event_type: tag"
           echo "push_event_type=TAG" >> $GITHUB_ENV
         fi
     
@@ -48,10 +48,10 @@ runs:
       if: ${{ env.push_event_type == 'TAG' && inputs.use_image_tag_by_tag == 'true'}}
       run: |
         changed_dockerfiles=$(find . -type f -name 'Dockerfile' || true)
-        echo "----- [DEBUG] target dockerfiles: $changed_dockerfiles -----"
+        echo "[DEBUG] target dockerfiles: $changed_dockerfiles"
         echo "changed_dockerfiles=$changed_dockerfiles" >> $GITHUB_ENV
         TAG_NAME=${GITHUB_REF#refs/tags/}
-        echo "----- [DEBUG] tag: $TAG_NAME -----"
+        echo "[DEBUG] tag: $TAG_NAME"
         echo "tag_list=$TAG_NAME" >> $GITHUB_ENV
 
     # PUSH対象がブランチの場合、前回PUSHされた際のコミットを取得する
@@ -69,16 +69,19 @@ runs:
         # get target branch name
         echo "GITHUB_REF: $GITHUB_REF"
         BRANCH_NAME=${GITHUB_REF#refs/heads/}
-        echo "----- [DEBUG] branch: $BRANCH_NAME -----"
+        echo "[DEBUG] branch: $BRANCH_NAME"
         echo "branch=$BRANCH_NAME" >> $GITHUB_ENV
 
         # get changed dockerfile between previsou and current commit
-        echo "----- [DEBUG] previous commit: ${{ github.event.before }} -----"
-        echo "----- [DEBUG] latest commit: ${{ github.sha }} -----"
+        echo "[DEBUG] previous commit: ${{ github.event.before }}"
+        echo "[DEBUG] latest commit: ${{ github.sha }}"
         git fetch origin $GITHUB_SHA:refs/remotes/origin/$BRANCH_NAME
         git checkout $GITHUB_SHA
         changed_dockerfiles=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep Dockerfile || true)
-        echo "----- [DEBUG] target dockerfiles: $changed_dockerfiles -----"
+        echo "[DEBUG] target dockerfiles:"
+        for df in $changed_dockerfiles; do
+          echo "::debug::${df}"
+        done
         echo "changed_dockerfiles=$changed_dockerfiles" >> $GITHUB_ENV
 
         # create taglist
