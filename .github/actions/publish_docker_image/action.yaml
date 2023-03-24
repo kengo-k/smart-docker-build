@@ -35,10 +35,10 @@ runs:
       shell: bash
       run: |
         if [[ $GITHUB_REF == refs/heads/* ]]; then
-          echo "----- [DEBUG] push_event_type: BRANCH -----"
+          echo "::info:: push_event_type: branch"
           echo "push_event_type=BRANCH" >> $GITHUB_ENV
         elif [[ $GITHUB_REF == refs/tags/* ]]; then
-          echo "----- [DEBUG] push_event_type: TAG -----"
+          echo "::info:: push_event_type: tag -----"
           echo "push_event_type=TAG" >> $GITHUB_ENV
         fi
     
