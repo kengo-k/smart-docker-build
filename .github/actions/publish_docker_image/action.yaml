@@ -52,7 +52,7 @@ runs:
         echo "changed_dockerfiles=$changed_dockerfiles" >> $GITHUB_ENV
         TAG_NAME=${GITHUB_REF#refs/tags/}
         echo "[DEBUG] tag: $TAG_NAME"
-        echo "tag_list=$TAG_NAME" >> $GITHUB_ENV
+        echo "taglist=$TAG_NAME" >> $GITHUB_ENV
 
     # PUSH対象がブランチの場合、前回PUSHされた際のコミットを取得する
     - name: checkout before commit
