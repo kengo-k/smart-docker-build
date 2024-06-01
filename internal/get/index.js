@@ -24,7 +24,9 @@ async function main() {
   for (const arg of args) {
     argObjs.push(schema.parse(arg));
   }
-  console.log(argObjs);
+
+  console.log('timezone:', timezone);
+  console.log('args:', argObjs);
 
   const octokit = new Octokit({ auth: token });
   const { repository, after } = github.context.payload;
@@ -61,7 +63,6 @@ async function main() {
         imageTags.push(after);
       }
       const tag = imageTags.join('-');
-      console.log('Current directory:', process.cwd());
 
       outputs.push({
         path: argObj.path,
