@@ -25,16 +25,24 @@ async function main() {
 
   const octokit = new Octokit({ auth: token });
   const { repository, after } = github.context.payload;
-  const commit = await octokit.repos.getCommit({
+  // const commit = await octokit.repos.getCommit({
+  //   owner: repository.owner.login,
+  //   repo: repository.name,
+  //   ref: after,
+  // });
+
+  const compare = await octokit.repos.compareCommits({
     owner: repository.owner.login,
     repo: repository.name,
-    ref: after,
+    base: after + '^', // 最新のコミットの直前のコミット
+    head: after,
   });
+  console.log('compare:', compare);
 
-  console.log('commit:', commit);
+  //console.log('commit:', commit);
   //const changedFiles = commit.data.files.map((file) => file.filename);
   console.log('sha:', after);
-  console.log(changedFiles);
+  //console.log(changedFiles);
 }
 
 try {
