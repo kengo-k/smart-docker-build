@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: 'Test'
-        uses: kengo-k/docker-build@v1
+        uses: kengo-k/actions-docker-build@v1
         with:
           token: ${{ secrets.GHCR_TOKEN }}
           timezone: 'Asia/Tokyo'
