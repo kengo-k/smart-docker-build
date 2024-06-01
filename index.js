@@ -5,6 +5,7 @@ import github from '@actions/github';
 import { load } from 'js-yaml';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
+import { format } from 'date-fns';
 
 const schema = z.object({
   path: z.string(),
@@ -52,7 +53,9 @@ async function main() {
         imageTags.push(argObj.branch);
       }
       if (argObj.with_timestamp) {
-        imageTags.push(new Date().toISOString());
+        const now = new Date();
+        const formattedDate = format(now, 'yyyyMMddHHmm');
+        imageTags.push(formattedDate);
       }
       if (argObj.with_commit_sha) {
         imageTags.push(after);
