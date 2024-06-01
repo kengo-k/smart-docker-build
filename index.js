@@ -62,6 +62,7 @@ async function main() {
       }
       const imageTag = imageTags.join('-');
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
+      console.log('Current directory:', process.cwd());
       await exec('docker', buildArgs);
     }
   }
