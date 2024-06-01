@@ -1,6 +1,7 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
 const yaml = require('js-yaml');
+const { z } = require('zod');
 
 const schema = z.object({
   path: z.string(),
