@@ -31,7 +31,8 @@ async function main() {
     ref: sha,
   });
 
-  const changedFiles = commit.data.files.map((file) => file.filename);
+  console.log('commit:', commit);
+  //const changedFiles = commit.data.files.map((file) => file.filename);
   console.log('sha:', sha);
   console.log(changedFiles);
 }
