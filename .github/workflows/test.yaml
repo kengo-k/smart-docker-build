@@ -15,7 +15,7 @@ jobs:
             - path: .github/workflows/Dockerfile
               name: helloworld
               branch: main
-              only_changed: true
+              only_changed: false
               with_branch_name: true
               with_timestamp: true
               with_commit_sha: true
