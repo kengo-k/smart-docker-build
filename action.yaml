@@ -30,7 +30,7 @@ runs:
         password: ${{ inputs.token }}
 
     - name: checkout latest commit
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: 'Display Output'
       shell: bash
