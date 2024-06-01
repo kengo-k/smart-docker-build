@@ -10,7 +10,7 @@ jobs:
       - name: 'test'
         uses: kengo-k/docker-build@main
         with:
-          data: |
+          args: |
             - name: John
               age: 30
             - name: Alice
