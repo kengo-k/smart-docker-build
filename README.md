@@ -25,7 +25,7 @@ jobs:
           token: ${{ secrets.GHCR_TOKEN }}
           timezone: 'Asia/Tokyo'
           args: |
-            - path: .github/workflows/Dockerfile
+            - path: <path-to-your-Dockerfile>
               name: helloworld
               on_branch_pushed: true
               on_branch_changed: true
