@@ -7,7 +7,5 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: 'テスト用ワークフロー'
-        uses: kengo-k/github-custom-actions/.github/actions/publish_docker_image@main
-        with:
-          token: ${{ secrets.GHCR_TOKEN }}
+      - name: 'test'
+        uses: kengo-k/docker-build@main
