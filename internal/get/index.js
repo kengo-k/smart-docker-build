@@ -10,11 +10,12 @@ import { Octokit } from '@octokit/rest'
 const schema = z.object({
   path: z.string(),
   name: z.string(),
-  branch: z.string(),
-  only_changed: z.boolean().optional().default(true),
-  with_branch_name: z.boolean().optional().default(true),
-  with_timestamp: z.boolean().optional().default(true),
-  with_commit_sha: z.boolean().optional().default(true),
+  on_branch_changed: z.boolean().optional().default(true),
+  on_branch_pushed: z.boolean().optional().default(true),
+  on_tag_pushed: z.boolean().optional().default(true),
+  include_branch_name: z.boolean().optional().default(true),
+  include_timestamp: z.boolean().optional().default(true),
+  include_commit_sha: z.boolean().optional().default(true),
 })
 
 async function main() {
@@ -30,7 +31,7 @@ async function main() {
   console.log('args:', argObjs)
 
   const octokit = new Octokit({ auth: token })
-  const { repository, after } = github.context.payload
+  const { repository, after, ref } = github.context.payload
 
   const compare = await octokit.repos.compareCommits({
     owner: repository.owner.login,
@@ -39,10 +40,21 @@ async function main() {
     head: after,
   })
 
+  let branch
+  let tag
+
+  if (ref.startsWith('refs/heads/')) {
+    branch = ref.replace('refs/heads/', '')
+  } else if (ref.startsWith('refs/tags/')) {
+    tag = ref.replace('refs/tags/', '')
+  } else {
+    throw new Error(`Unsupported ref: ${ref}`)
+  }
+
   const outputs = []
   for (const argObj of argObjs) {
     let buildRequired = false
-    if (argObj.only_changed) {
+    if (argObj.on_branch_changed) {
       const dockerfile = compare.data.files.find(
         (file) => file.filename === argObj.path,
       )
@@ -53,25 +65,37 @@ async function main() {
       buildRequired = true
     }
     if (buildRequired) {
-      const imageTags = []
-      if (argObj.with_branch_name) {
-        imageTags.push(argObj.branch)
-      }
-      if (argObj.with_timestamp) {
-        const now = new Date()
-        const formattedDate = format(toZonedTime(now, timezone), 'yyyyMMddHHmm')
-        imageTags.push(formattedDate)
-      }
-      if (argObj.with_commit_sha) {
-        imageTags.push(after)
-      }
-      const tag = imageTags.join('-')
+      if (branch && argObj.on_branch_pushed) {
+        const imageTags = []
+        if (argObj.include_branch_name) {
+          imageTags.push(argObj.branch)
+        }
+        if (argObj.include_timestamp) {
+          const now = new Date()
+          const formattedDate = format(
+            toZonedTime(now, timezone),
+            'yyyyMMddHHmm',
+          )
+          imageTags.push(formattedDate)
+        }
+        if (argObj.include_commit_sha) {
+          imageTags.push(after)
+        }
+        const tag = imageTags.join('-')
 
-      outputs.push({
-        path: argObj.path,
-        name: argObj.name,
-        tag,
-      })
+        outputs.push({
+          path: argObj.path,
+          name: argObj.name,
+          tag,
+        })
+      }
+      if (tag && argObj.on_tag_pushed) {
+        outputs.push({
+          path: argObj.path,
+          name: argObj.name,
+          tag,
+        })
+      }
     }
   }
   setOutput('docker_command', JSON.stringify(outputs))

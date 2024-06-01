@@ -15,8 +15,9 @@ jobs:
           args: |
             - path: .github/workflows/Dockerfile
               name: helloworld
-              branch: main
-              only_changed: false
-              with_branch_name: true
-              with_timestamp: true
-              with_commit_sha: true
+              on_branch_changed: false
+              on_branch_pushed: true
+              on_tag_pushed: true
+              include_branch_name: true
+              include_timestamp: true
+              include_commit_sha: true
