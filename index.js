@@ -39,6 +39,9 @@ async function main() {
   });
   console.log('compare:', compare);
 
+  const files = compare.data.files.map((file) => file.filename);
+  console.log(files);
+
   //console.log('commit:', commit);
   //const changedFiles = commit.data.files.map((file) => file.filename);
   console.log('sha:', after);
