@@ -12,3 +12,6 @@ runs:
   steps:
     - name: 'Call Another Action'
       uses: kengo-k/docker-build/internal/get@main
+      with:
+        token: ${{ inputs.token }}
+        args: ${{ inputs.args }}
