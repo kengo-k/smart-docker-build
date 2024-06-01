@@ -1,10 +1,9 @@
 import { format } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import fs from 'fs'
 import { load } from 'js-yaml'
 import { z } from 'zod'
 
-import { getInput, setFailed } from '@actions/core'
+import { getInput, setFailed, setOutput } from '@actions/core'
 import github from '@actions/github'
 import { Octokit } from '@octokit/rest'
 
@@ -102,12 +101,7 @@ async function main() {
     }
   }
 
-  fs.writeFileSync(
-    process.env.GITHUB_OUTPUT,
-    `build_args=${JSON.stringify(outputs)}`,
-    { encoding: 'utf8' },
-  )
-  //setOutput('build_args', JSON.stringify(outputs))
+  setOutput('build_args', JSON.stringify(outputs))
 }
 
 try {
