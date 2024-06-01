@@ -2,11 +2,22 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const yaml = require('js-yaml');
 
+const schema = z.object({
+  path: z.string(),
+  branch: z.string(),
+  only_changed: z.boolean().optional().default(true),
+  with_branch_name: z.boolean().optional().default(true),
+  with_timestamp: z.boolean().optional().default(true),
+  with_commit_sha: z.boolean().optional().default(true),
+});
+
 function main() {
-  console.log('Hello World');
-  const args = core.getInput('args');
-  const argsObj = yaml.load(args);
-  console.log(argsObj);
+  const args = yaml.load(core.getInput('args'));
+  const argObjs = []
+  for (const arg of args) {
+    argObjs.push(schema.parse(arg));
+  }
+  console.log(argObjs);
 }
 
 try {
