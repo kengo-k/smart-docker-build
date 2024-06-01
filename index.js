@@ -1,10 +1,12 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
+const yaml = require('js-yaml');
 
 function main() {
   console.log('Hello World');
   const args = core.getInput('args');
-  console.log(args);
+  const argsObj = yaml.safeLoad(args);
+  console.log(argsObj);
 }
 
 try {
