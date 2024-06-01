@@ -89,6 +89,7 @@ async function main() {
       console.log(content);
 
       //await exec('docker', buildArgs);
+      await exec('git', ['status']);
     }
   }
 
