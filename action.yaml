@@ -16,7 +16,7 @@ runs:
   steps:
     - name: 'Get docker build args'
       id: js_action
-      uses: kengo-k/docker-build/internal/get@main
+      uses: kengo-k/actions-docker-build/internal/get@main
       with:
         token: ${{ inputs.token }}
         timezone: ${{ inputs.timezone }}
