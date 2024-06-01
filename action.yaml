@@ -29,5 +29,5 @@ runs:
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')
           echo "path: $path, name: $name, tag: $tag"
+          docker build -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $dockerfile)
         done
-        ls -la
