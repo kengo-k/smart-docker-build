@@ -35,7 +35,7 @@ async function main() {
     head: after,
   });
 
-
+  const outputs = [];
   for (const argObj of argObjs) {
     let buildRequired = false;
     if (argObj.only_changed) {
@@ -59,18 +59,17 @@ async function main() {
       if (argObj.with_commit_sha) {
         imageTags.push(after);
       }
-      const imageTag = imageTags.join('-');
-      const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
+      const tag = imageTags.join('-');
       console.log('Current directory:', process.cwd());
 
-      const outputArray = [
-        { key1: 'value1', key2: 'value2' },
-        { key1: 'value3', key2: 'value4' }
-      ];
-
-      setOutput('docker_command', JSON.stringify(outputArray));
+      outputs.push({
+        path: argObj.path,
+        name: argObj.name,
+        tag,
+      });
     }
   }
+  setOutput('docker_command', JSON.stringify(outputs));
 
 }
 

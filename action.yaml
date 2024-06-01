@@ -22,7 +22,8 @@ runs:
       run: |
         output_array='${{ steps.js_action.outputs.docker_command }}'
         echo "$output_array" | jq -c '.[]' | while read -r element; do
-          key1=$(echo "$element" | jq -r '.key1')
-          key2=$(echo "$element" | jq -r '.key2')
-          echo "Key1: $key1, Key2: $key2"
+          path=$(echo "$element" | jq -r '.path')
+          name=$(echo "$element" | jq -r '.name')
+          tag=$(echo "$element" | jq -r '.tag')
+          echo "path: $path, name: $name, tag: $tag"
         done
