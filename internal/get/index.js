@@ -96,6 +96,8 @@ async function main() {
           tag,
         })
       }
+    } else {
+      console.log(`${argObj.path} has not changed, skipping build`)
     }
   }
   setOutput('build_args', JSON.stringify(outputs))

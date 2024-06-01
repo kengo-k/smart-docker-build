@@ -2,6 +2,10 @@ name: 'test to publish docker image'
 
 on:
   push:
+    branches:
+      - main
+    tags:
+      - '*'
 
 jobs:
   test:
@@ -15,7 +19,7 @@ jobs:
           args: |
             - path: .github/workflows/Dockerfile
               name: helloworld
-              on_branch_changed: false
+              on_branch_changed: true
               on_branch_pushed: true
               on_tag_pushed: true
               include_branch_name: true
