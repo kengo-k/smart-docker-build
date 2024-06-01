@@ -10,4 +10,5 @@ outputs:
     description: 'The time we greeted you'
 runs:
   using: 'node20'
+  pre: 'npm install'
   main: 'index.js'
