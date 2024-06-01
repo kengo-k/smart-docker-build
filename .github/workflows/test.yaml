@@ -9,3 +9,9 @@ jobs:
     steps:
       - name: 'test'
         uses: kengo-k/docker-build@main
+        with:
+          data: |
+            - name: John
+              age: 30
+            - name: Alice
+              age: 25
