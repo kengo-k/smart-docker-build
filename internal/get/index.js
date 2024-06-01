@@ -53,6 +53,14 @@ async function main() {
 
   const outputs = []
   for (const argObj of argObjs) {
+    if (tag && argObj.on_tag_pushed) {
+      outputs.push({
+        path: argObj.path,
+        name: argObj.name,
+        tag,
+      })
+    }
+
     let buildRequired = false
     if (argObj.on_branch_changed) {
       const dockerfile = compare.data.files.find(
@@ -64,40 +72,32 @@ async function main() {
     } else {
       buildRequired = true
     }
-    if (buildRequired) {
-      if (branch && argObj.on_branch_pushed) {
-        const imageTags = []
-        if (argObj.include_branch_name) {
-          imageTags.push(branch)
-        }
-        if (argObj.include_timestamp) {
-          const now = new Date()
-          const formattedDate = format(
-            toZonedTime(now, timezone),
-            'yyyyMMddHHmm',
-          )
-          imageTags.push(formattedDate)
-        }
-        if (argObj.include_commit_sha) {
-          imageTags.push(after)
-        }
-        const tag = imageTags.join('-')
 
-        outputs.push({
-          path: argObj.path,
-          name: argObj.name,
-          tag,
-        })
-      }
-      if (tag && argObj.on_tag_pushed) {
-        outputs.push({
-          path: argObj.path,
-          name: argObj.name,
-          tag,
-        })
-      }
-    } else {
+    if (!buildRequired) {
       console.log(`${argObj.path} has not changed, skipping build`)
+      continue
+    }
+
+    if (branch && argObj.on_branch_pushed) {
+      const imageTags = []
+      if (argObj.include_branch_name) {
+        imageTags.push(branch)
+      }
+      if (argObj.include_timestamp) {
+        const now = new Date()
+        const formattedDate = format(toZonedTime(now, timezone), 'yyyyMMddHHmm')
+        imageTags.push(formattedDate)
+      }
+      if (argObj.include_commit_sha) {
+        imageTags.push(after)
+      }
+      const tag = imageTags.join('-')
+
+      outputs.push({
+        path: argObj.path,
+        name: argObj.name,
+        tag,
+      })
     }
   }
   setOutput('build_args', JSON.stringify(outputs))
