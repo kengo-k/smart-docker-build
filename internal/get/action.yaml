@@ -7,6 +7,9 @@ inputs:
   args:
     description: 'Who to greet'
     required: true
+outputs:
+  docker_command:
+    description: 'The generated docker command'
 runs:
   using: 'docker'
   image: 'Dockerfile'
