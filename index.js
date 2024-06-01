@@ -24,16 +24,16 @@ async function main() {
   console.log(argObjs);
 
   const octokit = new Octokit({ auth: token });
-  const { repository, sha } = github.context.payload;
+  const { repository, after } = github.context.payload;
   const commit = await octokit.repos.getCommit({
     owner: repository.owner.login,
     repo: repository.name,
-    ref: sha,
+    ref: after,
   });
 
   console.log('commit:', commit);
   //const changedFiles = commit.data.files.map((file) => file.filename);
-  console.log('sha:', sha);
+  console.log('sha:', after);
   console.log(changedFiles);
 }
 
