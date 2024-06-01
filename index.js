@@ -63,33 +63,6 @@ async function main() {
       const imageTag = imageTags.join('-');
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
       console.log('Current directory:', process.cwd());
-
-      const { data: commit } = await octokit.repos.getCommit({
-        owner: repository.owner.login,
-        repo: repository.name,
-        ref: after,
-      });
-
-      //console.log('Commit:', commit)
-      await exec('git', ['status']);
-
-      const file = commit.files.find(file => file.filename === argObj.path);
-      if (!file) {
-        throw new Error(`File not found: ${filePath}`);
-      }
-
-      const { data: blob } = await octokit.git.getBlob({
-        owner,
-        repo,
-        file_sha: file.sha,
-      });
-
-      // Base64エンコードされたファイル内容をデコード
-      const content = Buffer.from(blob.content, 'base64').toString('utf8');
-
-      console.log(content);
-
-      //await exec('docker', buildArgs);
     }
   }
 

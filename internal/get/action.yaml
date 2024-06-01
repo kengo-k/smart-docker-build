@@ -8,7 +8,5 @@ inputs:
     description: 'Who to greet'
     required: true
 runs:
-  using: 'composite'
-  steps:
-    - name: 'Call Another Action'
-      uses: kengo-k/docker-build/internal/get@main
+  using: 'docker'
+  image: 'Dockerfile'
