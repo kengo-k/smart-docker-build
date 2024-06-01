@@ -13,6 +13,7 @@ jobs:
           token: ${{ secrets.GHCR_TOKEN }}
           args: |
             - path: .github/workflows/Dockerfile
+              name: helloworld
               branch: main
               only_changed: true
               with_branch_name: true
