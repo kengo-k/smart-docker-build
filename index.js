@@ -35,6 +35,10 @@ async function main() {
 
   const files = compare.data.files.map((file) => file.filename);
   console.log('files: ', files);
+  const filteredFiles = files.filter((file) => {
+    return argObjs.some((argObj) => argObj.path === file);
+  });
+  console.log('filtered files: ', filteredFiles);
 }
 
 try {
