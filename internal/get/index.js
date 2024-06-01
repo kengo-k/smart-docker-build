@@ -1,6 +1,5 @@
 
-import { getInput, setFailed } from '@actions/core';
-import { exec } from '@actions/exec';
+import { getInput, setFailed, setOutput } from '@actions/core';
 import github from '@actions/github';
 import { load } from 'js-yaml';
 import { z } from 'zod';
@@ -63,6 +62,8 @@ async function main() {
       const imageTag = imageTags.join('-');
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
       console.log('Current directory:', process.cwd());
+
+      setOutput('docker_command', 'HELLO');
     }
   }
 

@@ -11,7 +11,12 @@ runs:
   using: 'composite'
   steps:
     - name: 'Call Another Action'
+      id: js_action
       uses: kengo-k/docker-build/internal/get@main
       with:
         token: ${{ inputs.token }}
         args: ${{ inputs.args }}
+
+    - name: 'Display Output'
+      shell: bash
+      run: echo "Output from JS Action: ${{ steps.js_action.outputs.docker_command }}"
