@@ -17,6 +17,9 @@ runs:
         token: ${{ inputs.token }}
         args: ${{ inputs.args }}
 
+    - name: checkout latest commit
+      uses: actions/checkout@v2
+
     - name: 'Display Output'
       shell: bash
       run: |
@@ -27,3 +30,4 @@ runs:
           tag=$(echo "$element" | jq -r '.tag')
           echo "path: $path, name: $name, tag: $tag"
         done
+        ls -la
