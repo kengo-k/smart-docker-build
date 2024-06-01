@@ -1,20 +1,20 @@
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'docker-build'
+description: 'Build and Push Docker Images automatically'
 inputs:
   token:
     description: 'GitHub Token'
     required: true
   timezone:
-    description: 'Timezone'
+    description: 'Timezone for creating timestamps to include in image tag'
     required: true
     default: 'UTC'
   args:
-    description: 'Who to greet'
+    description: 'Configuration values for building images'
     required: true
 runs:
   using: 'composite'
   steps:
-    - name: 'Call Another Action'
+    - name: 'Get docker build args'
       id: js_action
       uses: kengo-k/docker-build/internal/get@main
       with:
@@ -22,17 +22,17 @@ runs:
         timezone: ${{ inputs.timezone }}
         args: ${{ inputs.args }}
 
-    - name: login to ghcr
+    - name: Login to ghcr
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ inputs.token }}
 
-    - name: checkout latest commit
+    - name: Checkout latest commit
       uses: actions/checkout@v4
 
-    - name: 'Display Output'
+    - name: 'Build and Push Docker Images'
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'

@@ -1,19 +1,19 @@
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'get'
+description: 'Get information for building Docker images'
 inputs:
   token:
     description: 'GitHub Token'
     required: true
   timezone:
-    description: 'Timezone'
+    description: 'Timezone for creating timestamps to include in image tag'
     required: true
     default: 'UTC'
   args:
-    description: 'Who to greet'
+    description: 'Configuration values for building images'
     required: true
 outputs:
   build_args:
-    description: 'The generated docker command'
+    description: 'Arguments to pass to the docker build command'
 runs:
   using: 'docker'
   image: 'Dockerfile'
