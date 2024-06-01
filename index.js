@@ -63,31 +63,34 @@ async function main() {
       const imageTag = imageTags.join('-');
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
       console.log('Current directory:', process.cwd());
-      await exec('docker', buildArgs);
+
+      const { data: commit } = await octokit.repos.getCommit({
+        owner: repository.owner.login,
+        repo: repository.name,
+        ref: after,
+      });
+
+      console.log('Commit:', commit)
+
+      const file = commit.files.find(file => file.filename === argObj.path);
+      if (!file) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const { data: blob } = await octokit.git.getBlob({
+        owner,
+        repo,
+        file_sha: file.sha,
+      });
+
+      // Base64エンコードされたファイル内容をデコード
+      const content = Buffer.from(blob.content, 'base64').toString('utf8');
+
+      console.log(content);
+
+      //await exec('docker', buildArgs);
     }
   }
-  // compare.data.files.forEach((f) => {
-  //   const file = f.filename
-  // });
-  // console.log('files: ', files);
-  // const dockerfiles = files.filter((file) => {
-  //   return argObjs.some((argObj) => argObj.path === file);
-  // });
-  // console.log('filtered files: ', dockerfiles);
-
-
-
-  // for (const dockerfile of dockerfiles) {
-  //   const argObj = argObjs.find((argObj) => argObj.path === dockerfile);
-  //   console.log('argObj: ', argObj);
-  //   const branch = argObj.branch;
-  //   const branchName = argObj.with_branch_name ? branch : '';
-  //   const timestamp = argObj.with_timestamp ? new Date().toISOString() : '';
-  //   const commitSha = argObj.with_commit_sha ? after : '';
-  //   console.log('branchName: ', branchName);
-  //   console.log('timestamp: ', timestamp);
-  //   console.log('commitSha: ', commitSha);
-  // }
 
 }
 
