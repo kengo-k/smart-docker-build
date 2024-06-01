@@ -3,6 +3,7 @@ import { getInput, setFailed } from '@actions/core';
 import github from '@actions/github';
 import { load } from 'js-yaml';
 import { z } from 'zod';
+import { Octokit } from '@octokit/rest';
 
 const schema = z.object({
   path: z.string(),
@@ -13,17 +14,30 @@ const schema = z.object({
   with_commit_sha: z.boolean().optional().default(true),
 });
 
-function main() {
+async function main() {
+  const token = getInput('token');
   const args = load(getInput('args'));
   const argObjs = []
   for (const arg of args) {
     argObjs.push(schema.parse(arg));
   }
   console.log(argObjs);
+
+  const octokit = new Octokit({ auth: token });
+  const { repository, sha } = github.context.payload;
+  const commit = await octokit.repos.getCommit({
+    owner: repository.owner.login,
+    repo: repository.name,
+    ref: sha,
+  });
+
+  const changedFiles = commit.data.files.map((file) => file.filename);
+  console.log('sha:', sha);
+  console.log(changedFiles);
 }
 
 try {
-  main();
+  await main();
 } catch (error) {
   setFailed(error.message);
 }
