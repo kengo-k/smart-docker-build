@@ -18,5 +18,6 @@ runs:
         args: ${{ inputs.args }}
 
     - name: 'Display Output'
+      shell: bash
       run: |
         echo ${{steps.js_action.outputs.docker_command}}
