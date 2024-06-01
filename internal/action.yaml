@@ -1,0 +1,8 @@
+name: 'Publish Docker images'
+description: 'Dockerfileに変更があった場合イメージをビルドしてGHCRにPUSHする'
+
+runs:
+  using: 'composite'
+  steps:
+  - name: Display Hello
+    run: echo "hello"
