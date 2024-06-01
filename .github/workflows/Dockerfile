@@ -1,2 +1,2 @@
-# Dockerfile for test!
+# Dockerfile for test
 FROM hello-world
