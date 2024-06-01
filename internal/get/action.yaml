@@ -12,7 +12,7 @@ inputs:
     description: 'Who to greet'
     required: true
 outputs:
-  docker_command:
+  build_args:
     description: 'The generated docker command'
 runs:
   using: 'docker'

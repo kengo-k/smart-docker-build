@@ -35,8 +35,8 @@ runs:
     - name: 'Display Output'
       shell: bash
       run: |
-        output_array='${{ steps.js_action.outputs.docker_command }}'
-        echo "$output_array" | jq -c '.[]' | while read -r element; do
+        build_args='${{ steps.js_action.outputs.build_args }}'
+        echo "$build_args" | jq -c '.[]' | while read -r element; do
           path=$(echo "$element" | jq -r '.path')
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')

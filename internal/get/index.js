@@ -98,7 +98,7 @@ async function main() {
       }
     }
   }
-  setOutput('docker_command', JSON.stringify(outputs))
+  setOutput('build_args', JSON.stringify(outputs))
 }
 
 try {
