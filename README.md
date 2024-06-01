@@ -26,7 +26,7 @@ jobs:
           timezone: 'Asia/Tokyo'
           args: |
             - path: <path-to-your-Dockerfile>
-              name: helloworld
+              name: <your-image-name>
               on_branch_pushed: true
               on_branch_changed: true
               on_tag_pushed: true
