@@ -1,7 +1,8 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
-const yaml = require('js-yaml');
-const { z } = require('zod');
+
+import { getInput, setFailed } from '@actions/core';
+import github from '@actions/github';
+import { load } from 'js-yaml';
+import { z } from 'zod';
 
 const schema = z.object({
   path: z.string(),
@@ -13,7 +14,7 @@ const schema = z.object({
 });
 
 function main() {
-  const args = yaml.load(core.getInput('args'));
+  const args = load(getInput('args'));
   const argObjs = []
   for (const arg of args) {
     argObjs.push(schema.parse(arg));
@@ -24,7 +25,7 @@ function main() {
 try {
   main();
 } catch (error) {
-  core.setFailed(error.message);
+  setFailed(error.message);
 }
 
 // try {
