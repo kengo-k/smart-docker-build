@@ -68,7 +68,7 @@ async function main() {
       if (branch && argObj.on_branch_pushed) {
         const imageTags = []
         if (argObj.include_branch_name) {
-          imageTags.push(argObj.branch)
+          imageTags.push(branch)
         }
         if (argObj.include_timestamp) {
           const now = new Date()
