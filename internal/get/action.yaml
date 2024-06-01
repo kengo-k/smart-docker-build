@@ -4,6 +4,10 @@ inputs:
   token:
     description: 'GitHub Token'
     required: true
+  timezone:
+    description: 'Timezone'
+    required: true
+    default: 'UTC'
   args:
     description: 'Who to greet'
     required: true

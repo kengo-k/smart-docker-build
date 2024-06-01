@@ -4,7 +4,7 @@ import github from '@actions/github';
 import { load } from 'js-yaml';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
-import { format } from 'date-fns';
+import { format } from 'date-fns-tz';
 
 const schema = z.object({
   path: z.string(),
@@ -18,6 +18,7 @@ const schema = z.object({
 
 async function main() {
   const token = getInput('token');
+  const timezone = getInput('timezone');
   const args = load(getInput('args'));
   const argObjs = []
   for (const arg of args) {
@@ -53,7 +54,7 @@ async function main() {
       }
       if (argObj.with_timestamp) {
         const now = new Date();
-        const formattedDate = format(now, 'yyyyMMddHHmm');
+        const formattedDate = format(now, 'yyyyMMddHHmm', { timeZone: timezone });
         imageTags.push(formattedDate);
       }
       if (argObj.with_commit_sha) {

@@ -11,6 +11,7 @@ jobs:
         uses: kengo-k/docker-build@main
         with:
           token: ${{ secrets.GHCR_TOKEN }}
+          timezone: 'Asia/Tokyo'
           args: |
             - path: .github/workflows/Dockerfile
               name: helloworld
