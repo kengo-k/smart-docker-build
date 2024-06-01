@@ -11,7 +11,9 @@ jobs:
         uses: kengo-k/docker-build@main
         with:
           args: |
-            - name: John
-              age: 30
-            - name: Alice
-              age: 25
+            - path: .github/workflows/Dockerfile
+              branch: main
+              only_changed: true
+              with_branch_name: true
+              with_timestamp: true
+              with_commit_sha: true
