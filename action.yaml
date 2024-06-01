@@ -20,4 +20,9 @@ runs:
     - name: 'Display Output'
       shell: bash
       run: |
-        echo ${{steps.js_action.outputs.docker_command}}
+        output_array='${{ steps.js_action.outputs.docker_command }}'
+        echo "$output_array" | jq -c '.[]' | while read -r element; do
+          key1=$(echo "$element" | jq -r '.key1')
+          key2=$(echo "$element" | jq -r '.key2')
+          echo "Key1: $key1, Key2: $key2"
+        done

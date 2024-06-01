@@ -63,7 +63,12 @@ async function main() {
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
       console.log('Current directory:', process.cwd());
 
-      setOutput('docker_command', 'HELLO');
+      const outputArray = [
+        { key1: 'value1', key2: 'value2' },
+        { key1: 'value3', key2: 'value4' }
+      ];
+
+      setOutput('docker_command', JSON.stringify(outputArray));
     }
   }
 
