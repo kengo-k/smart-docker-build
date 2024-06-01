@@ -10,6 +10,7 @@ jobs:
       - name: 'test'
         uses: kengo-k/docker-build@main
         with:
+          token: ${{ secrets.GHCR_TOKEN }}
           args: |
             - path: .github/workflows/Dockerfile
               branch: main
