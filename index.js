@@ -5,7 +5,7 @@ const yaml = require('js-yaml');
 function main() {
   console.log('Hello World');
   const args = core.getInput('args');
-  const argsObj = yaml.safeLoad(args);
+  const argsObj = yaml.load(args);
   console.log(argsObj);
 }
 
