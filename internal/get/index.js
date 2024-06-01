@@ -5,7 +5,7 @@ import { load } from 'js-yaml';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
 import { format } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz'
+import { toZonedTime } from 'date-fns-tz'
 
 const schema = z.object({
   path: z.string(),
@@ -57,7 +57,7 @@ async function main() {
       }
       if (argObj.with_timestamp) {
         const now = new Date();
-        const formattedDate = format(utcToZonedTime(now, timezone), 'yyyyMMddHHmm');
+        const formattedDate = format(toZonedTime(now, timezone), 'yyyyMMddHHmm');
         imageTags.push(formattedDate);
       }
       if (argObj.with_commit_sha) {
