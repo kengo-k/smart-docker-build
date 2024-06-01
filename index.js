@@ -70,7 +70,8 @@ async function main() {
         ref: after,
       });
 
-      console.log('Commit:', commit)
+      //console.log('Commit:', commit)
+      await exec('git', ['status']);
 
       const file = commit.files.find(file => file.filename === argObj.path);
       if (!file) {
@@ -89,7 +90,6 @@ async function main() {
       console.log(content);
 
       //await exec('docker', buildArgs);
-      await exec('git', ['status']);
     }
   }
 
