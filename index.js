@@ -59,7 +59,7 @@ async function main() {
       }
       const imageTag = imageTags.join('-');
       const buildArgs = ['build', '-f', argObj.path, '-t', `${argObj.name}:${imageTag}`, '.'];
-      await exec.exec('docker', buildArgs);
+      await exec('docker', buildArgs);
     }
   }
   // compare.data.files.forEach((f) => {
