@@ -66,3 +66,68 @@ When a branch or tag is pushed to the repository, this action will:
 7. Push the built image to the GitHub Container Registry (GHCR) using the generated tag.
 
 This action simplifies the process of building and pushing Docker images to GHCR, making it easier to automate your container deployment workflow.
+
+---
+
+## 🚧 Planned UX Improvements (Under Development)
+
+The current version requires explicit configuration for each Dockerfile. We are working on a more user-friendly approach:
+
+### Current Version (v1.0)
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    args: |
+      - path: api/Dockerfile
+        name: my-api
+      - path: worker/Dockerfile
+        name: my-worker
+```
+
+### Planned Version (v1.1+) - Zero Configuration
+```yaml
+# Automatic Dockerfile detection and smart image naming
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    # That's it! Everything else is automatic
+```
+
+### Smart Image Naming Rules (Priority Order)
+0. **Explicit args specification**: Highest priority, maintains backward compatibility
+1. **Configuration file**: `.docker-image.yml` or `docker-image.json` in same directory
+2. **Dockerfile comment**: `# Image: my-custom-image` at the top of Dockerfile
+3. **Single Dockerfile fallback**: Repository name (only when repository contains exactly one Dockerfile)
+4. **Multiple Dockerfiles**: Error if no explicit naming found
+
+### Examples
+
+#### Mixed Usage (Explicit + Automatic)
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    args: |
+      - path: api/Dockerfile
+        name: explicit-api  # Explicit specification (priority 0)
+      # worker/Dockerfile will be auto-detected and named automatically
+```
+
+#### Directory Structure Examples
+```
+my-repo/
+└── Dockerfile  # No config → Image name: "my-repo" (fallback)
+
+multi-service/
+├── api/
+│   ├── Dockerfile  # Image: api-server (comment)
+│   └── .docker-image.yml  # name: custom-api (config file wins)
+└── worker/Dockerfile  # No config → ERROR (multiple Dockerfiles)
+```
+
+This approach provides:
+- **Zero configuration** for simple cases (single Dockerfile)
+- **Explicit control** when needed (multiple services)
+- **Predictable behavior** (no unexpected image names)
+- **Clear error messages** with solution guidance
