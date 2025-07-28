@@ -7,6 +7,7 @@
 - [ ] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
 - [ ] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ
 - [x] **M4. LICENSEファイル追加** - MIT推奨
+- [ ] **M8. バリデーションとエラーログ追加** - 入力値検証とエラーハンドリング強化
 
 ### 差別化のための最小機能
 - [ ] **M5. 基本マルチプラットフォーム** - linux/amd64, linux/arm64 のみ対応
@@ -94,6 +95,12 @@
 - [ ] **M3-1. README使用例追加** - DockerHub/GHCR両方の例
 - [ ] **M3-2. README バッジ追加** - GitHub Actions status badge
 - [x] **M4-1. LICENSE ファイル** - MIT ライセンス
+
+### v1.0 (MVP) - 必須機能の詳細（追加）
+- [ ] **M8-1. 入力値バリデーション** - args, path, name等の必須項目チェック
+- [ ] **M8-2. Dockerfileファイル存在チェック** - ビルド前のファイル存在確認
+- [ ] **M8-3. エラーハンドリング強化** - 個別失敗時の継続実行とログ出力
+- [ ] **M8-4. ユーザーフレンドリーなエラーメッセージ** - 分かりやすいエラー説明
 
 ### v1.0 (MVP) - 差別化機能の詳細  
 - [ ] **M5-1. Buildx setup統合** - docker/setup-buildx-action使用
@@ -272,7 +279,7 @@ with:
 
 ### バージョン別工数見積もり
 **v1.0 (MVP):** マーケットプレイス出品可能レベル
-- 必須機能: 4項目（DockerHub対応、action.yaml、README、LICENSE）
+- 必須機能: 5項目（DockerHub対応、action.yaml、README、LICENSE、バリデーション）
 - 差別化機能: 2項目（マルチプラットフォーム、タグ戦略）
 - 品質保証: 1項目（テスト拡充）
 - **予想工数:** 1-2週間
