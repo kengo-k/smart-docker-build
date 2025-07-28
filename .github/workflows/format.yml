@@ -1,19 +1,19 @@
-name: Tests
+name: Format
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'internal/get/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/format.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'internal/get/**'
-      - '.github/workflows/test.yml'
+      - '.github/workflows/format.yml'
 
 jobs:
-  test:
+  format:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -32,5 +32,5 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Run tests
-      run: npm test
+    - name: Check code formatting
+      run: npm run format:check

@@ -1,8 +1,8 @@
 # Docker Image Builder
 
 [![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml)
+[![Format](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 
 This GitHub Action automatically builds Docker images and pushes them to the GitHub Container Registry (GHCR) whenever a Dockerfile is committed to a repository and a branch or tag is pushed.
 
