@@ -1,7 +1,7 @@
-import { generateBuildArgs } from './lib.js'
-
 import { getInput, info, setFailed, setOutput, warning } from '@actions/core'
 import github from '@actions/github'
+
+import { generateBuildArgs } from './lib.js'
 
 async function main() {
   info('🔍 Validating inputs...')

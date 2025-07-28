@@ -1,16 +1,15 @@
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals'
-import { mkdirSync, writeFileSync, rmSync } from 'fs'
+import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
+import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 import {
-  validateInputs,
-  validateDockerfile,
+  generateImageTag,
   parseArgs,
-  validateAndParseConfigurations,
   parseGitRef,
   shouldBuildForChanges,
-  generateImageTag,
-  generateBuildArgs
+  validateAndParseConfigurations,
+  validateDockerfile,
+  validateInputs,
 } from './lib.js'
 
 // Test fixture setup
@@ -54,7 +53,7 @@ describe('validateDockerfile', () => {
   test('should pass when Dockerfile exists', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(dockerfilePath, 'FROM node:18')
-    
+
     expect(() => {
       validateDockerfile('Dockerfile', testDir)
     }).not.toThrow()
@@ -75,15 +74,18 @@ describe('parseArgs', () => {
   on_branch_pushed: true
 `
     const result = parseArgs(yamlString)
-    expect(result).toEqual([{
-      path: 'Dockerfile',
-      name: 'test-app',
-      on_branch_pushed: true
-    }])
+    expect(result).toEqual([
+      {
+        path: 'Dockerfile',
+        name: 'test-app',
+        on_branch_pushed: true,
+      },
+    ])
   })
 
   test('should throw error for invalid YAML', () => {
-    const invalidYaml = '- path: Dockerfile\n  name: test-app\n    invalid: indentation'
+    const invalidYaml =
+      '- path: Dockerfile\n  name: test-app\n    invalid: indentation'
     expect(() => {
       parseArgs(invalidYaml)
     }).toThrow('Failed to parse YAML')
@@ -112,21 +114,24 @@ describe('shouldBuildForChanges', () => {
   test('should return true when on_branch_changed is false', () => {
     const argObj = { on_branch_changed: false, path: 'Dockerfile' }
     const changedFiles = []
-    
+
     expect(shouldBuildForChanges(argObj, changedFiles)).toBe(true)
   })
 
   test('should return true when Dockerfile is in changed files', () => {
     const argObj = { on_branch_changed: true, path: 'Dockerfile' }
-    const changedFiles = [{ filename: 'Dockerfile' }, { filename: 'src/app.js' }]
-    
+    const changedFiles = [
+      { filename: 'Dockerfile' },
+      { filename: 'src/app.js' },
+    ]
+
     expect(shouldBuildForChanges(argObj, changedFiles)).toBe(true)
   })
 
   test('should return false when Dockerfile is not changed', () => {
     const argObj = { on_branch_changed: true, path: 'Dockerfile' }
     const changedFiles = [{ filename: 'src/app.js' }, { filename: 'README.md' }]
-    
+
     expect(shouldBuildForChanges(argObj, changedFiles)).toBe(false)
   })
 })
@@ -136,9 +141,9 @@ describe('generateImageTag', () => {
     const argObj = {
       include_branch_name: true,
       include_timestamp: true,
-      include_commit_sha: true
+      include_commit_sha: true,
     }
-    
+
     const result = generateImageTag(argObj, 'main', 'UTC', 'abc123')
     expect(result).toMatch(/main-\d{12}-abc123/)
   })
@@ -147,9 +152,9 @@ describe('generateImageTag', () => {
     const argObj = {
       include_branch_name: true,
       include_timestamp: false,
-      include_commit_sha: false
+      include_commit_sha: false,
     }
-    
+
     const result = generateImageTag(argObj, 'develop', 'UTC', 'def456')
     expect(result).toBe('develop')
   })
@@ -158,9 +163,9 @@ describe('generateImageTag', () => {
     const argObj = {
       include_branch_name: false,
       include_timestamp: false,
-      include_commit_sha: false
+      include_commit_sha: false,
     }
-    
+
     const result = generateImageTag(argObj, 'main', 'UTC', 'abc123')
     expect(result).toBe('')
   })
@@ -176,13 +181,13 @@ describe('validateAndParseConfigurations', () => {
   test('should validate and parse valid configurations', () => {
     const args = [
       { path: 'Dockerfile', name: 'test-app' },
-      { path: 'api.dockerfile', name: 'test-api' }
+      { path: 'api.dockerfile', name: 'test-api' },
     ]
-    
+
     // Mock process.cwd to return testDir
     const originalCwd = process.cwd
     process.cwd = () => testDir
-    
+
     try {
       const result = validateAndParseConfigurations(args)
       expect(result.validConfigurations).toHaveLength(2)
@@ -195,12 +200,12 @@ describe('validateAndParseConfigurations', () => {
   test('should handle invalid configurations gracefully', () => {
     const args = [
       { path: 'NonexistentDockerfile', name: 'invalid-app' },
-      { path: 'Dockerfile', name: 'valid-app' }
+      { path: 'Dockerfile', name: 'valid-app' },
     ]
-    
+
     const originalCwd = process.cwd
     process.cwd = () => testDir
-    
+
     try {
       const result = validateAndParseConfigurations(args)
       expect(result.validConfigurations).toHaveLength(1)
