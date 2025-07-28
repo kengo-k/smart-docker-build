@@ -1,0 +1,8 @@
+# Test fixtures (if any are created during tests)
+test-fixtures/
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
