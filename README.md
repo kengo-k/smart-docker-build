@@ -1,6 +1,6 @@
 # Docker Image Builder
 
-[![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml/badge.svg)](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml)
+[![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml)
 
 This GitHub Action automatically builds Docker images and pushes them to the GitHub Container Registry (GHCR) whenever a Dockerfile is committed to a repository and a branch or tag is pushed.
 
