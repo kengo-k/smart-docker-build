@@ -36,11 +36,51 @@ runs:
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'
+        echo "🔧 Starting Docker build and push process..."
+        
+        success_count=0
+        failure_count=0
+        
         echo "$build_args" | jq -c '.[]' | while read -r element; do
           path=$(echo "$element" | jq -r '.path')
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')
-          echo "path: $path, name: $name, tag: $tag"
-          docker build -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path)
-          docker push ghcr.io/${{ github.actor }}/$name:$tag
+          
+          echo "📦 Building image: $name:$tag from $path"
+          
+          # Build the Docker image
+          if docker build -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path); then
+            echo "✅ Successfully built ghcr.io/${{ github.actor }}/$name:$tag"
+            
+            # Push the Docker image
+            if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
+              echo "✅ Successfully pushed ghcr.io/${{ github.actor }}/$name:$tag"
+              ((success_count++))
+            else
+              echo "❌ Failed to push ghcr.io/${{ github.actor }}/$name:$tag"
+              ((failure_count++))
+            fi
+          else
+            echo "❌ Failed to build ghcr.io/${{ github.actor }}/$name:$tag from $path"
+            echo "💡 Please check:"
+            echo "   - Dockerfile syntax in $path"
+            echo "   - Base image availability"
+            echo "   - Build context in $(dirname $path)"
+            ((failure_count++))
+          fi
+          
+          echo "---"
         done
+        
+        echo "📊 Build Summary:"
+        echo "   ✅ Successful: $success_count"
+        echo "   ❌ Failed: $failure_count"
+        
+        if [ $failure_count -gt 0 ] && [ $success_count -eq 0 ]; then
+          echo "💥 All builds failed. Please check the errors above."
+          exit 1
+        elif [ $failure_count -gt 0 ]; then
+          echo "⚠️  Some builds failed, but continuing with successful ones."
+        else
+          echo "🎉 All builds completed successfully!"
+        fi
