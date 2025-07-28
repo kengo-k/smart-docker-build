@@ -6,7 +6,7 @@
 - [ ] **M1. DockerHub対応追加** - 現在GHCR のみ → GHCR + DockerHub 両対応
 - [ ] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
 - [ ] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ
-- [ ] **M4. LICENSEファイル追加** - MIT推奨
+- [x] **M4. LICENSEファイル追加** - MIT推奨
 
 ### 差別化のための最小機能
 - [ ] **M5. 基本マルチプラットフォーム** - linux/amd64, linux/arm64 のみ対応
@@ -93,7 +93,7 @@
 - [ ] **M2-3. action.yaml description改善** - より詳細で魅力的な説明
 - [ ] **M3-1. README使用例追加** - DockerHub/GHCR両方の例
 - [ ] **M3-2. README バッジ追加** - GitHub Actions status badge
-- [ ] **M4-1. LICENSE ファイル** - MIT ライセンス
+- [x] **M4-1. LICENSE ファイル** - MIT ライセンス
 
 ### v1.0 (MVP) - 差別化機能の詳細  
 - [ ] **M5-1. Buildx setup統合** - docker/setup-buildx-action使用
