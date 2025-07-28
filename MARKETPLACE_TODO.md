@@ -4,7 +4,7 @@
 
 ### 必須機能（出品のため）
 - [ ] **M1. DockerHub対応追加** - 現在GHCR のみ → GHCR + DockerHub 両対応
-- [ ] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
+- [x] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
 - [ ] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ
 - [x] **M4. LICENSEファイル追加** - MIT推奨
 - [x] **M8. バリデーションとエラーログ追加** - 入力値検証とエラーハンドリング強化
@@ -89,9 +89,9 @@
 ### v1.0 (MVP) - 必須機能の詳細
 - [ ] **M1-1. DockerHub認証設定** - docker/login-action との統合
 - [ ] **M1-2. レジストリ選択オプション** - GHCR/DockerHub/両方の選択機能
-- [ ] **M2-1. action.yaml author追加** - 作者情報
-- [ ] **M2-2. action.yaml branding追加** - アイコン（docker）・色（blue）
-- [ ] **M2-3. action.yaml description改善** - より詳細で魅力的な説明
+- [x] **M2-1. action.yaml author追加** - 作者情報
+- [x] **M2-2. action.yaml branding追加** - アイコン（package）・色（blue）
+- [x] **M2-3. action.yaml description改善** - より詳細で魅力的な説明
 - [ ] **M3-1. README使用例追加** - DockerHub/GHCR両方の例
 - [ ] **M3-2. README バッジ追加** - GitHub Actions status badge
 - [x] **M4-1. LICENSE ファイル** - MIT ライセンス
