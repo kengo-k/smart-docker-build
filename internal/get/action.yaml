@@ -17,9 +17,6 @@ inputs:
   images:
     description: 'YAML array of explicit image configurations'
     required: false
-  args:
-    description: 'Configuration values for building images (legacy)'
-    required: false
 outputs:
   build_args:
     description: 'Arguments to pass to the docker build command'

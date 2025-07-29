@@ -8,12 +8,9 @@ import {
   generateImageTag,
   generateTagsFromTemplates,
   loadProjectConfig,
-  parseArgs,
   parseGitRef,
   shouldBuildForChanges,
-  validateAndParseConfigurations,
   validateDockerfile,
-  validateInputs,
 } from './lib.js'
 
 // Test fixture setup
@@ -25,32 +22,6 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(testDir, { recursive: true, force: true })
-})
-
-describe('validateInputs', () => {
-  test('should pass with valid inputs', () => {
-    expect(() => {
-      validateInputs('token123', 'UTC', [{ path: 'Dockerfile', name: 'test' }])
-    }).not.toThrow()
-  })
-
-  test('should throw error for empty token', () => {
-    expect(() => {
-      validateInputs('', 'UTC', [{ path: 'Dockerfile', name: 'test' }])
-    }).toThrow('Token is required')
-  })
-
-  test('should throw error for empty timezone', () => {
-    expect(() => {
-      validateInputs('token123', '', [{ path: 'Dockerfile', name: 'test' }])
-    }).toThrow('Timezone is required')
-  })
-
-  test('should throw error for empty args', () => {
-    expect(() => {
-      validateInputs('token123', 'UTC', [])
-    }).toThrow('Args must be a non-empty array')
-  })
 })
 
 describe('validateDockerfile', () => {
@@ -67,32 +38,6 @@ describe('validateDockerfile', () => {
     expect(() => {
       validateDockerfile('NonexistentDockerfile', testDir)
     }).toThrow('Dockerfile not found')
-  })
-})
-
-describe('parseArgs', () => {
-  test('should parse valid YAML', () => {
-    const yamlString = `
-- path: Dockerfile
-  name: test-app
-  on_branch_pushed: true
-`
-    const result = parseArgs(yamlString)
-    expect(result).toEqual([
-      {
-        path: 'Dockerfile',
-        name: 'test-app',
-        on_branch_pushed: true,
-      },
-    ])
-  })
-
-  test('should throw error for invalid YAML', () => {
-    const invalidYaml =
-      '- path: Dockerfile\n  name: test-app\n    invalid: indentation'
-    expect(() => {
-      parseArgs(invalidYaml)
-    }).toThrow('Failed to parse YAML')
   })
 })
 
@@ -172,52 +117,6 @@ describe('generateImageTag', () => {
 
     const result = generateImageTag(argObj, 'main', 'UTC', 'abc123')
     expect(result).toBe('')
-  })
-})
-
-describe('validateAndParseConfigurations', () => {
-  beforeEach(() => {
-    // Create test Dockerfiles
-    writeFileSync(join(testDir, 'Dockerfile'), 'FROM node:18')
-    writeFileSync(join(testDir, 'api.dockerfile'), 'FROM python:3.9')
-  })
-
-  test('should validate and parse valid configurations', () => {
-    const args = [
-      { path: 'Dockerfile', name: 'test-app' },
-      { path: 'api.dockerfile', name: 'test-api' },
-    ]
-
-    // Mock process.cwd to return testDir
-    const originalCwd = process.cwd
-    process.cwd = () => testDir
-
-    try {
-      const result = validateAndParseConfigurations(args)
-      expect(result.validConfigurations).toHaveLength(2)
-      expect(result.validationErrors).toHaveLength(0)
-    } finally {
-      process.cwd = originalCwd
-    }
-  })
-
-  test('should handle invalid configurations gracefully', () => {
-    const args = [
-      { path: 'NonexistentDockerfile', name: 'invalid-app' },
-      { path: 'Dockerfile', name: 'valid-app' },
-    ]
-
-    const originalCwd = process.cwd
-    process.cwd = () => testDir
-
-    try {
-      const result = validateAndParseConfigurations(args)
-      expect(result.validConfigurations).toHaveLength(1)
-      expect(result.validationErrors).toHaveLength(1)
-      expect(result.validationErrors[0]).toContain('Dockerfile not found')
-    } finally {
-      process.cwd = originalCwd
-    }
   })
 })
 
