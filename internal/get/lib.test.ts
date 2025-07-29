@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
-import { mkdirSync, rmSync, writeFileSync } from 'fs'
+import { mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
 
 import {
@@ -10,7 +10,6 @@ import {
   loadProjectConfig,
   parseGitRef,
   shouldBuildForChanges,
-  validateDockerfile,
 } from './lib.js'
 
 // Test fixture setup
@@ -22,23 +21,6 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(testDir, { recursive: true, force: true })
-})
-
-describe('validateDockerfile', () => {
-  test('should pass when Dockerfile exists', () => {
-    const dockerfilePath = join(testDir, 'Dockerfile')
-    writeFileSync(dockerfilePath, 'FROM node:18')
-
-    expect(() => {
-      validateDockerfile('Dockerfile', testDir)
-    }).not.toThrow()
-  })
-
-  test('should throw error when Dockerfile does not exist', () => {
-    expect(() => {
-      validateDockerfile('NonexistentDockerfile', testDir)
-    }).toThrow('Dockerfile not found')
-  })
 })
 
 describe('parseGitRef', () => {

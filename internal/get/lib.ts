@@ -178,21 +178,6 @@ export function extractImageNameFromDockerfile(
   return null
 }
 
-export function validateDockerfile(
-  dockerfilePath: string,
-  workingDir: string = process.cwd(),
-): boolean {
-  // Check if file exists
-  const absolutePath = resolve(workingDir, dockerfilePath)
-  if (!existsSync(absolutePath)) {
-    throw new Error(
-      `❌ Dockerfile not found: ${dockerfilePath} (resolved to: ${absolutePath})`,
-    )
-  }
-
-  return true
-}
-
 export async function getRepositoryChanges(
   octokit: Octokit,
   repository: { owner: { login: string }; name: string },
@@ -376,11 +361,6 @@ export async function generateBuildArgs(
         name: imageName,
       })
     }
-  }
-
-  // Validate all Dockerfiles exist
-  for (const image of imagesToProcess) {
-    validateDockerfile(image.dockerfile, workingDir)
   }
 
   // Generate build arguments based on git event
