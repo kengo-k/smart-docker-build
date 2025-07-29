@@ -126,6 +126,32 @@ multi-service/
 └── worker/Dockerfile  # No config → ERROR (multiple Dockerfiles)
 ```
 
+#### Dockerfile Comment Examples
+
+Add image name directly in your Dockerfile:
+
+```dockerfile
+# Image: my-api-server
+FROM node:18
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+```dockerfile
+# Image: database-migration
+FROM alpine:3.18
+
+RUN apk add --no-cache postgresql-client
+COPY scripts/ /scripts/
+CMD ["/scripts/migrate.sh"]
+```
+
 This approach provides:
 - **Zero configuration** for simple cases (single Dockerfile)
 - **Explicit control** when needed (multiple services)
