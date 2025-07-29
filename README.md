@@ -131,3 +131,57 @@ This approach provides:
 - **Explicit control** when needed (multiple services)
 - **Predictable behavior** (no unexpected image names)
 - **Clear error messages** with solution guidance
+
+### Global Configuration File
+
+Create `smart-docker-build.yml` in your project root for custom tag strategies:
+
+```yaml
+# Smart Docker Build Configuration
+# Place this file in your project root
+
+# Tag generation templates
+tags:
+  # Tags generated when a Git tag is pushed
+  tag_pushed: ["{tag}", "latest"]
+  
+  # Tags generated when a branch is pushed  
+  branch_pushed: ["{branch}-{timestamp}-{sha}"]
+
+# Build triggers
+build:
+  # Build when branch is pushed (only if Dockerfile changed)
+  on_branch_push: true
+  
+  # Build when tag is pushed (always build for releases)
+  on_tag_push: true
+
+# Available template variables:
+# {tag}       - Git tag name (e.g., "v1.0.0") 
+# {branch}    - Branch name (e.g., "main", "feature/auth")
+# {sha}       - Short commit SHA (e.g., "abc1234")
+# {timestamp} - Timestamp in YYYYMMDDHHMM format
+# {repo}      - Repository name
+```
+
+### Default Behavior (No Configuration File)
+
+When no `smart-docker-build.yml` exists, these defaults are used:
+
+```yaml
+tags:
+  tag_pushed: ["{tag}"]                        # Simple tag names
+  branch_pushed: ["{branch}-{timestamp}-{sha}"] # Detailed branch tags
+
+build:
+  on_branch_push: true  # Build on branch push (only if Dockerfile changed)
+  on_tag_push: true     # Build on tag push (always build for releases)
+```
+
+**Complete zero-config example:**
+```
+my-app/
+└── Dockerfile
+```
+- Image name: `my-app` (repository name)
+- Tag examples: `v1.0.0` (on tag), `main-202501291430-abc1234` (on branch)
