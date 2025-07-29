@@ -247,6 +247,34 @@ export function generateImageTag(
   return imageTags.join('-')
 }
 
+// Validate template variables exist
+export function validateTemplateVariables(
+  templates: string[],
+  availableVariables: string[],
+): void {
+  const variablePattern = /\{(\w+)\}/g
+  const missingVariables: string[] = []
+
+  for (const template of templates) {
+    let match
+    while ((match = variablePattern.exec(template)) !== null) {
+      const variableName = match[1]
+      if (!availableVariables.includes(variableName)) {
+        if (!missingVariables.includes(variableName)) {
+          missingVariables.push(variableName)
+        }
+      }
+    }
+  }
+
+  if (missingVariables.length > 0) {
+    throw new Error(
+      `❌ Invalid template variables found: {${missingVariables.join('}, {')}}\n` +
+        `💡 Available variables: {${availableVariables.join('}, {')}}`,
+    )
+  }
+}
+
 // Generate tags from templates
 export function generateTagsFromTemplates(
   templates: string[],
@@ -305,6 +333,11 @@ export async function generateBuildArgs(
   const projectConfig = loadProjectConfig(workingDir)
   const tagsConfig = projectConfig.tags
   const buildConfig = projectConfig.build
+
+  // Validate template variables in tag configuration
+  const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+  validateTemplateVariables(tagsConfig.tag_pushed, availableVariables)
+  validateTemplateVariables(tagsConfig.branch_pushed, availableVariables)
 
   // Get repository information
   const octokit = new Octokit({ auth: token })

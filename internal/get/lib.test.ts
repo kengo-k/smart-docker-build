@@ -10,6 +10,7 @@ import {
   loadProjectConfig,
   parseGitRef,
   shouldBuildForChanges,
+  validateTemplateVariables,
 } from './lib.js'
 
 // Test fixture setup
@@ -125,6 +126,44 @@ describe('extractImageNameFromDockerfile', () => {
   test('should return null for non-existent file', () => {
     const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile')
     expect(name).toBeNull()
+  })
+})
+
+describe('validateTemplateVariables', () => {
+  test('should pass when all variables are available', () => {
+    const templates = ['{tag}', '{branch}-{sha}', '{timestamp}']
+    const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+
+    expect(() => {
+      validateTemplateVariables(templates, availableVariables)
+    }).not.toThrow()
+  })
+
+  test('should throw error when variable is missing', () => {
+    const templates = ['{tag}', '{branch}-{missing}']
+    const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+
+    expect(() => {
+      validateTemplateVariables(templates, availableVariables)
+    }).toThrow('❌ Invalid template variables found: {missing}')
+  })
+
+  test('should throw error for multiple missing variables', () => {
+    const templates = ['{tag}', '{unknown}-{missing}']
+    const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+
+    expect(() => {
+      validateTemplateVariables(templates, availableVariables)
+    }).toThrow('❌ Invalid template variables found: {unknown}, {missing}')
+  })
+
+  test('should not duplicate missing variables', () => {
+    const templates = ['{missing}', '{missing}-{tag}']
+    const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+
+    expect(() => {
+      validateTemplateVariables(templates, availableVariables)
+    }).toThrow('❌ Invalid template variables found: {missing}')
   })
 })
 
