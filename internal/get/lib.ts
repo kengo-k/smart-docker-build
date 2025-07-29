@@ -319,9 +319,9 @@ export function createTemplateVariables(
 export async function generateBuildArgs(
   token: string,
   timezone: string,
-  tagsYaml: string,
-  buildYaml: string,
-  imagesYaml: string,
+  tagsYaml: string, // getInput always returns string, empty string if not provided
+  buildYaml: string, // getInput always returns string, empty string if not provided
+  imagesYaml: string, // getInput always returns string, empty string if not provided
   githubContext: GitHubContext,
   workingDir: string = process.cwd(),
 ): Promise<GenerateBuildArgsResult> {

@@ -1,4 +1,11 @@
-import { getInput, info, setFailed, setOutput, warning } from '@actions/core'
+import {
+  debug,
+  getInput,
+  info,
+  setFailed,
+  setOutput,
+  warning,
+} from '@actions/core'
 import github from '@actions/github'
 
 import { generateBuildArgs } from './lib.js'
@@ -34,8 +41,8 @@ async function main(): Promise<void> {
     } else {
       info(`✅ Successfully generated ${buildArgs.length} build configurations`)
 
-      // Log results for debugging
-      console.log('Build arguments:', buildArgs)
+      // Log results for debugging (only shown when ACTIONS_STEP_DEBUG=true)
+      debug(`Build arguments: ${JSON.stringify(buildArgs, null, 2)}`)
     }
 
     setOutput('build_args', JSON.stringify(buildArgs))
