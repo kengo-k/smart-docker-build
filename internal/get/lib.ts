@@ -407,10 +407,15 @@ export async function generateBuildArgs(
     }
 
     if (dockerfiles.length === 1) {
-      // Single Dockerfile: use repository name
+      // Single Dockerfile: check for image name comment first
+      const imageName = extractImageNameFromDockerfile(
+        dockerfiles[0],
+        workingDir,
+      )
+
       imagesToProcess.push({
         dockerfile: dockerfiles[0],
-        name: repository.name,
+        name: imageName || repository.name, // Use repository name as fallback
       })
     } else {
       // Multiple Dockerfiles: require image names
