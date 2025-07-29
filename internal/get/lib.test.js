@@ -3,7 +3,11 @@ import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 import {
+  createTemplateVariables,
+  extractImageNameFromDockerfile,
   generateImageTag,
+  generateTagsFromTemplates,
+  loadProjectConfig,
   parseArgs,
   parseGitRef,
   shouldBuildForChanges,
@@ -214,5 +218,71 @@ describe('validateAndParseConfigurations', () => {
     } finally {
       process.cwd = originalCwd
     }
+  })
+})
+
+describe('loadProjectConfig', () => {
+  test('should return default config when file does not exist', () => {
+    const config = loadProjectConfig('/nonexistent')
+    expect(config).toEqual({
+      tags: {
+        tag_pushed: ['{tag}'],
+        branch_pushed: ['{branch}-{timestamp}-{sha}']
+      },
+      build: {
+        on_branch_push: true,
+        on_tag_push: true
+      }
+    })
+  })
+})
+
+describe('extractImageNameFromDockerfile', () => {
+  test('should return null for non-existent file', () => {
+    const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile')
+    expect(name).toBeNull()
+  })
+})
+
+describe('generateTagsFromTemplates', () => {
+  test('should generate tags from templates', () => {
+    const templates = ['{tag}', '{branch}-{sha}']
+    const variables = { tag: 'v1.0.0', branch: 'main', sha: 'abc1234' }
+    
+    const result = generateTagsFromTemplates(templates, variables)
+    expect(result).toEqual(['v1.0.0', 'main-abc1234'])
+  })
+  
+  test('should handle missing variables', () => {
+    const templates = ['{tag}', '{branch}-{missing}']
+    const variables = { tag: 'v1.0.0', branch: 'main' }
+    
+    const result = generateTagsFromTemplates(templates, variables)
+    expect(result).toEqual(['v1.0.0', 'main-{missing}'])
+  })
+})
+
+describe('createTemplateVariables', () => {
+  test('should create template variables', () => {
+    const variables = createTemplateVariables('main', 'v1.0.0', 'UTC', 'abc1234567', 'my-repo')
+    
+    expect(variables).toMatchObject({
+      repo: 'my-repo',
+      sha: 'abc1234',
+      branch: 'main',
+      tag: 'v1.0.0'
+    })
+    expect(variables.timestamp).toMatch(/^\d{12}$/)
+  })
+  
+  test('should handle missing branch and tag', () => {
+    const variables = createTemplateVariables(null, null, 'UTC', 'abc1234567', 'my-repo')
+    
+    expect(variables).toMatchObject({
+      repo: 'my-repo',
+      sha: 'abc1234'
+    })
+    expect(variables.branch).toBeUndefined()
+    expect(variables.tag).toBeUndefined()
   })
 })

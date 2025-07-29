@@ -10,11 +10,17 @@ inputs:
     required: true
   timezone:
     description: 'Timezone for generating timestamps in image tags (e.g., "UTC", "Asia/Tokyo", "America/New_York")'
-    required: true
+    required: false
     default: 'UTC'
-  args:
-    description: 'YAML array of Docker build configurations. Each item should specify path, name, and build options for Docker images.'
-    required: true
+  tags:
+    description: 'YAML configuration for tag generation templates (tag_pushed, branch_pushed)'
+    required: false
+  build:
+    description: 'YAML configuration for build triggers (on_branch_push, on_tag_push)'
+    required: false
+  images:
+    description: 'YAML array of explicit image configurations (dockerfile, name)'
+    required: false
 runs:
   using: 'composite'
   steps:
@@ -24,6 +30,9 @@ runs:
       with:
         token: ${{ inputs.token }}
         timezone: ${{ inputs.timezone }}
+        tags: ${{ inputs.tags }}
+        build: ${{ inputs.build }}
+        images: ${{ inputs.images }}
         args: ${{ inputs.args }}
 
     - name: Login to ghcr
