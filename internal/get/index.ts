@@ -15,17 +15,11 @@ async function main(): Promise<void> {
 
   const token = getInput('token')
   const timezone = getInput('timezone')
-  const tagsYaml = getInput('tags')
-  const buildYaml = getInput('build')
-  const imagesYaml = getInput('images')
 
   try {
     const { buildArgs, validationErrors } = await generateBuildArgs(
       token,
       timezone,
-      tagsYaml,
-      buildYaml,
-      imagesYaml,
       github.context,
     )
 

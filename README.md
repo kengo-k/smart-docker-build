@@ -11,7 +11,7 @@ A GitHub Action that **intelligently** builds and pushes Docker images with zero
 - **🔍 Zero Configuration**: Works out-of-the-box for single Dockerfile projects
 - **🧠 Smart Detection**: Automatically finds and processes all Dockerfiles
 - **🏷️ Flexible Tagging**: Template-based tag generation with variables
-- **⚙️ Easy Customization**: Optional configuration file for advanced control
+- **⚙️ Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
 - **🔄 Change Detection**: Only builds when Dockerfiles are modified (configurable)
 - **📦 GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
 
@@ -44,11 +44,29 @@ jobs:
 - 📦 Build and push to `ghcr.io/username/repo-name`
 - 🏷️ Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
 
-## 📋 Usage Examples
+## 📋 Configuration Methods
 
-### Multi-Service Projects
+There are only **2 simple ways** to configure this action:
 
-For projects with multiple Dockerfiles, add `# Image:` comments:
+### 1. Project Configuration File
+
+Create `smart-docker-build.yml` in your project root for custom tag templates and build triggers:
+
+```yaml
+# Tag generation templates
+tags:
+  tag_pushed: ["{tag}", "latest"]                    # Git tag pushes
+  branch_pushed: ["{branch}-{timestamp}-{sha}"]     # Branch pushes
+
+# Build triggers
+build:
+  on_branch_push: true    # Build when branch is pushed (only if Dockerfile changed)
+  on_tag_push: true       # Build when tag is pushed (always build)
+```
+
+### 2. Dockerfile Comments
+
+For projects with multiple Dockerfiles, add `# Image:` comments to specify image names:
 
 ```dockerfile
 # Image: my-api-server
@@ -62,47 +80,6 @@ WORKDIR /app
 FROM python:3.11
 WORKDIR /app
 # ... rest of your Dockerfile
-```
-
-### Custom Tag Templates
-
-Create `smart-docker-build.yml` in your project root:
-
-```yaml
-tags:
-  # Release tags: v1.0.0 + latest
-  tag_pushed: ["{tag}", "latest"]
-
-  # Branch tags: feature-auth-abc1234
-  branch_pushed: ["{branch}-{sha}"]
-
-build:
-  on_branch_push: true   # Build on branch push (when Dockerfile changes)
-  on_tag_push: true      # Build on tag/release (always)
-```
-
-### Advanced Configuration
-
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    # Override default timezone for timestamps
-    timezone: 'Asia/Tokyo'
-    # Custom tag templates
-    tags: |
-      tag_pushed: ["{tag}", "latest", "stable"]
-      branch_pushed: ["{branch}-{timestamp}"]
-    # Custom build triggers
-    build: |
-      on_branch_push: false  # Only build on releases
-      on_tag_push: true
-    # Explicit image specification (highest priority)
-    images: |
-      - dockerfile: api/Dockerfile
-        name: my-api
-      - dockerfile: worker/Dockerfile.prod
-        name: my-worker
 ```
 
 ## 🏷️ Tag Template Variables
@@ -126,60 +103,41 @@ tags:
   branch_pushed: ["{branch}-{timestamp}"]  # → main-202501291430
 ```
 
-## 🎛️ Configuration Options
-
-### Project Configuration File
-
-Create `smart-docker-build.yml` in your project root:
-
-```yaml
-# Tag generation templates
-tags:
-  tag_pushed: ["{tag}", "latest"]                    # Git tag pushes
-  branch_pushed: ["{branch}-{timestamp}-{sha}"]     # Branch pushes
-
-# Build triggers
-build:
-  on_branch_push: true    # Build when branch is pushed (only if Dockerfile changed)
-  on_tag_push: true       # Build when tag is pushed (always build)
-```
-
-### Action Parameters
+## ⚙️ Action Parameters
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
 | `token` | ✅ | - | GitHub token for repository access and GHCR push |
 | `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
-| `tags` | ❌ | - | YAML string overriding tag templates |
-| `build` | ❌ | - | YAML string overriding build triggers |
-| `images` | ❌ | - | YAML array for explicit image specifications |
+
+### Custom Timezone Example
+
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
+```
 
 ## 🔍 Image Name Detection
 
 The action determines image names using this priority order:
 
-1. **Explicit specification** (highest priority)
-   ```yaml
-   images: |
-     - dockerfile: api/Dockerfile
-       name: my-api-server
-   ```
-
-2. **Dockerfile comment**
+1. **Dockerfile comment** (recommended for multiple Dockerfiles)
    ```dockerfile
    # Image: my-custom-name
    FROM alpine:3.18
    ```
 
-3. **Single Dockerfile fallback**
+2. **Single Dockerfile fallback**
    - Repository name (only if exactly 1 Dockerfile exists)
 
-4. **Error** (multiple Dockerfiles without names)
+3. **Error** (multiple Dockerfiles without names)
    ```
    ❌ Multiple Dockerfiles found but no image name specified for worker/Dockerfile
    💡 Solutions:
       - Add comment: # Image: my-worker
-      - Use explicit images parameter
+      - Create smart-docker-build.yml with explicit image configurations
    ```
 
 ## 📁 Project Structure Examples
@@ -203,7 +161,7 @@ microservices/
 ```
 ✅ **Result**: Three images with specified names
 
-### Mixed Configuration
+### Custom Configuration
 ```
 hybrid-app/
 ├── smart-docker-build.yml  # Project-wide tag strategy
@@ -231,15 +189,7 @@ When no configuration file exists:
 4. **Tag Generation**: Creates tags from templates with variable substitution
 5. **Build & Push**: Uses Docker to build and push to GHCR
 
-## 🛠️ Advanced Usage
-
-### Custom Timezone
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    timezone: 'America/New_York'  # Affects {timestamp} variable
-```
+## 🛠️ Advanced Examples
 
 ### Release-Only Builds
 ```yaml
@@ -251,9 +201,21 @@ build:
 
 ### Multiple Tags per Push
 ```yaml
+# smart-docker-build.yml
 tags:
   tag_pushed: ["{tag}", "latest", "stable"]
   branch_pushed: ["{branch}-{sha}", "{branch}-latest"]
+```
+
+### Development vs Production
+```yaml
+# smart-docker-build.yml
+tags:
+  # Development builds
+  branch_pushed: ["dev-{branch}-{timestamp}"]
+
+  # Production releases
+  tag_pushed: ["{tag}", "latest", "production"]
 ```
 
 ## 🤝 Contributing

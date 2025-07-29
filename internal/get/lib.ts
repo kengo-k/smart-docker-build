@@ -91,17 +91,6 @@ const configSchema = z.object({
     .default(DEFAULT_CONFIG.build),
 })
 
-const imageSchema = z.object({
-  dockerfile: z.string().min(1, 'Dockerfile path cannot be empty'),
-  name: z
-    .string()
-    .min(1, 'Image name cannot be empty')
-    .regex(
-      /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/,
-      'Image name must contain only lowercase letters, numbers, dots, hyphens and underscores',
-    ),
-})
-
 // Load project configuration
 export function loadProjectConfig(workingDir: string = process.cwd()): Config {
   const configPath = resolve(workingDir, 'smart-docker-build.yml')
@@ -319,9 +308,6 @@ export function createTemplateVariables(
 export async function generateBuildArgs(
   token: string,
   timezone: string,
-  tagsYaml: string, // getInput always returns string, empty string if not provided
-  buildYaml: string, // getInput always returns string, empty string if not provided
-  imagesYaml: string, // getInput always returns string, empty string if not provided
   githubContext: GitHubContext,
   workingDir: string = process.cwd(),
 ): Promise<GenerateBuildArgsResult> {
@@ -330,48 +316,10 @@ export async function generateBuildArgs(
     throw new Error('❌ Token is required but not provided')
   }
 
-  // Load configuration
+  // Load configuration from project file only
   const projectConfig = loadProjectConfig(workingDir)
-
-  // Parse YAML inputs
-  let tagsConfig = projectConfig.tags
-  let buildConfig = projectConfig.build
-  let explicitImages: ImageSpec[] = []
-
-  if (tagsYaml) {
-    try {
-      const parsedTags = load(tagsYaml)
-      tagsConfig = configSchema.shape.tags.parse(parsedTags)
-    } catch (error) {
-      throw new Error(
-        `❌ Failed to parse tags YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
-    }
-  }
-
-  if (buildYaml) {
-    try {
-      const parsedBuild = load(buildYaml)
-      buildConfig = configSchema.shape.build.parse(parsedBuild)
-    } catch (error) {
-      throw new Error(
-        `❌ Failed to parse build YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
-    }
-  }
-
-  if (imagesYaml) {
-    try {
-      const parsedImages = load(imagesYaml)
-      if (Array.isArray(parsedImages)) {
-        explicitImages = parsedImages.map((img) => imageSchema.parse(img))
-      }
-    } catch (error) {
-      throw new Error(
-        `❌ Failed to parse images YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      )
-    }
-  }
+  const tagsConfig = projectConfig.tags
+  const buildConfig = projectConfig.build
 
   // Get repository information
   const octokit = new Octokit({ auth: token })
@@ -389,56 +337,44 @@ export async function generateBuildArgs(
   const compare = await getRepositoryChanges(octokit, repository, after)
   const changedFiles = compare.data.files || []
 
-  // Determine images to build
-  let imagesToProcess: ImageSpec[] = []
+  // Auto-detect Dockerfiles and determine images to build
+  const dockerfiles = await findDockerfiles(workingDir)
 
-  if (explicitImages.length > 0) {
-    // Use explicit image specifications (highest priority)
-    imagesToProcess = explicitImages.map((img) => ({
-      dockerfile: img.dockerfile,
-      name: img.name,
-    }))
+  if (dockerfiles.length === 0) {
+    throw new Error('❌ No Dockerfiles found in the repository')
+  }
+
+  const imagesToProcess: ImageSpec[] = []
+
+  if (dockerfiles.length === 1) {
+    // Single Dockerfile: check for image name comment first
+    const imageName = extractImageNameFromDockerfile(dockerfiles[0], workingDir)
+
+    imagesToProcess.push({
+      dockerfile: dockerfiles[0],
+      name: imageName || repository.name, // Use repository name as fallback
+    })
   } else {
-    // Auto-detect Dockerfiles
-    const dockerfiles = await findDockerfiles(workingDir)
-
-    if (dockerfiles.length === 0) {
-      throw new Error('❌ No Dockerfiles found in the repository')
-    }
-
-    if (dockerfiles.length === 1) {
-      // Single Dockerfile: check for image name comment first
+    // Multiple Dockerfiles: require image names
+    for (const dockerfilePath of dockerfiles) {
       const imageName = extractImageNameFromDockerfile(
-        dockerfiles[0],
+        dockerfilePath,
         workingDir,
       )
 
-      imagesToProcess.push({
-        dockerfile: dockerfiles[0],
-        name: imageName || repository.name, // Use repository name as fallback
-      })
-    } else {
-      // Multiple Dockerfiles: require image names
-      for (const dockerfilePath of dockerfiles) {
-        const imageName = extractImageNameFromDockerfile(
-          dockerfilePath,
-          workingDir,
+      if (!imageName) {
+        throw new Error(
+          `❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
+            `💡 Solutions:\n` +
+            `   - Add comment: # Image: my-image-name\n` +
+            `   - Create smart-docker-build.yml with explicit image configurations`,
         )
-
-        if (!imageName) {
-          throw new Error(
-            `❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
-              `💡 Solutions:\n` +
-              `   - Add comment: # Image: my-image-name\n` +
-              `   - Use explicit images parameter in action`,
-          )
-        }
-
-        imagesToProcess.push({
-          dockerfile: dockerfilePath,
-          name: imageName,
-        })
       }
+
+      imagesToProcess.push({
+        dockerfile: dockerfilePath,
+        name: imageName,
+      })
     }
   }
 

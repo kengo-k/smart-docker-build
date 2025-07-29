@@ -8,15 +8,6 @@ inputs:
     description: 'Timezone for creating timestamps to include in image tag'
     required: false
     default: 'UTC'
-  tags:
-    description: 'YAML configuration for tag generation templates'
-    required: false
-  build:
-    description: 'YAML configuration for build triggers'
-    required: false
-  images:
-    description: 'YAML array of explicit image configurations'
-    required: false
 outputs:
   build_args:
     description: 'Arguments to pass to the docker build command'
