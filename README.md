@@ -128,7 +128,9 @@ multi-service/
 
 #### Dockerfile Comment Examples
 
-Add image name directly in your Dockerfile:
+**Single Dockerfile**: No comment needed, repository name is used automatically.
+
+**Multiple Dockerfiles**: Add `# Image:` comment to specify image names:
 
 ```dockerfile
 # Image: my-api-server
@@ -152,6 +154,8 @@ COPY scripts/ /scripts/
 CMD ["/scripts/migrate.sh"]
 ```
 
+**Error Case**: Multiple Dockerfiles without `# Image:` comments will result in an error with guidance on how to resolve it.
+
 This approach provides:
 - **Zero configuration** for simple cases (single Dockerfile)
 - **Explicit control** when needed (multiple services)
@@ -170,20 +174,20 @@ Create `smart-docker-build.yml` in your project root for custom tag strategies:
 tags:
   # Tags generated when a Git tag is pushed
   tag_pushed: ["{tag}", "latest"]
-  
-  # Tags generated when a branch is pushed  
+
+  # Tags generated when a branch is pushed
   branch_pushed: ["{branch}-{timestamp}-{sha}"]
 
 # Build triggers
 build:
   # Build when branch is pushed (only if Dockerfile changed)
   on_branch_push: true
-  
+
   # Build when tag is pushed (always build for releases)
   on_tag_push: true
 
 # Available template variables:
-# {tag}       - Git tag name (e.g., "v1.0.0") 
+# {tag}       - Git tag name (e.g., "v1.0.0")
 # {branch}    - Branch name (e.g., "main", "feature/auth")
 # {sha}       - Short commit SHA (e.g., "abc1234")
 # {timestamp} - Timestamp in YYYYMMDDHHMM format
