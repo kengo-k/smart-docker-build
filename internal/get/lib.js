@@ -3,7 +3,7 @@ import { toZonedTime } from 'date-fns-tz'
 import { existsSync, readFileSync } from 'fs'
 import { readdir } from 'fs/promises'
 import { load } from 'js-yaml'
-import { resolve, dirname, basename } from 'path'
+import { resolve } from 'path'
 import { z } from 'zod'
 
 import { Octokit } from '@octokit/rest'
@@ -12,32 +12,44 @@ import { Octokit } from '@octokit/rest'
 const DEFAULT_CONFIG = {
   tags: {
     tag_pushed: ['{tag}'],
-    branch_pushed: ['{branch}-{timestamp}-{sha}']
+    branch_pushed: ['{branch}-{timestamp}-{sha}'],
   },
   build: {
     on_branch_push: true,
-    on_tag_push: true
-  }
+    on_tag_push: true,
+  },
 }
 
 // Configuration schemas
 const configSchema = z.object({
-  tags: z.object({
-    tag_pushed: z.array(z.string()).optional().default(['{tag}']),
-    branch_pushed: z.array(z.string()).optional().default(['{branch}-{timestamp}-{sha}'])
-  }).optional().default(DEFAULT_CONFIG.tags),
-  build: z.object({
-    on_branch_push: z.boolean().optional().default(true),
-    on_tag_push: z.boolean().optional().default(true)
-  }).optional().default(DEFAULT_CONFIG.build)
+  tags: z
+    .object({
+      tag_pushed: z.array(z.string()).optional().default(['{tag}']),
+      branch_pushed: z
+        .array(z.string())
+        .optional()
+        .default(['{branch}-{timestamp}-{sha}']),
+    })
+    .optional()
+    .default(DEFAULT_CONFIG.tags),
+  build: z
+    .object({
+      on_branch_push: z.boolean().optional().default(true),
+      on_tag_push: z.boolean().optional().default(true),
+    })
+    .optional()
+    .default(DEFAULT_CONFIG.build),
 })
 
 const imageSchema = z.object({
   dockerfile: z.string().min(1, 'Dockerfile path cannot be empty'),
-  name: z.string().min(1, 'Image name cannot be empty').regex(
-    /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/,
-    'Image name must contain only lowercase letters, numbers, dots, hyphens and underscores'
-  )
+  name: z
+    .string()
+    .min(1, 'Image name cannot be empty')
+    .regex(
+      /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/,
+      'Image name must contain only lowercase letters, numbers, dots, hyphens and underscores',
+    ),
 })
 
 const schema = z.object({
@@ -60,37 +72,46 @@ const schema = z.object({
 // Load project configuration
 export function loadProjectConfig(workingDir = process.cwd()) {
   const configPath = resolve(workingDir, 'smart-docker-build.yml')
-  
+
   if (existsSync(configPath)) {
     try {
       const configContent = readFileSync(configPath, 'utf8')
       const rawConfig = load(configContent)
       return configSchema.parse(rawConfig)
     } catch (error) {
-      throw new Error(`❌ Failed to parse config file ${configPath}: ${error.message}`)
+      throw new Error(
+        `❌ Failed to parse config file ${configPath}: ${error.message}`,
+      )
     }
   }
-  
+
   return DEFAULT_CONFIG
 }
 
 // Find all Dockerfiles in the project
 export async function findDockerfiles(workingDir = process.cwd()) {
   const dockerfiles = []
-  
+
   async function searchDir(dir) {
     try {
       const entries = await readdir(dir, { withFileTypes: true })
-      
+
       for (const entry of entries) {
         const fullPath = resolve(dir, entry.name)
-        
+
         if (entry.isDirectory()) {
           // Skip common directories we don't want to search
-          if (!['node_modules', '.git', '.github', 'dist', 'build'].includes(entry.name)) {
+          if (
+            !['node_modules', '.git', '.github', 'dist', 'build'].includes(
+              entry.name,
+            )
+          ) {
             await searchDir(fullPath)
           }
-        } else if (entry.name === 'Dockerfile' || entry.name.startsWith('Dockerfile.')) {
+        } else if (
+          entry.name === 'Dockerfile' ||
+          entry.name.startsWith('Dockerfile.')
+        ) {
           const relativePath = fullPath.replace(workingDir + '/', '')
           dockerfiles.push(relativePath)
         }
@@ -99,24 +120,28 @@ export async function findDockerfiles(workingDir = process.cwd()) {
       // Ignore directories we can't read
     }
   }
-  
+
   await searchDir(workingDir)
   return dockerfiles
 }
 
 // Extract image name from Dockerfile comment
-export function extractImageNameFromDockerfile(dockerfilePath, workingDir = process.cwd()) {
+export function extractImageNameFromDockerfile(
+  dockerfilePath,
+  workingDir = process.cwd(),
+) {
   const absolutePath = resolve(workingDir, dockerfilePath)
-  
+
   if (!existsSync(absolutePath)) {
     return null
   }
-  
+
   try {
     const content = readFileSync(absolutePath, 'utf8')
     const lines = content.split('\n')
-    
-    for (const line of lines.slice(0, 5)) { // Check first 5 lines only
+
+    for (const line of lines.slice(0, 5)) {
+      // Check first 5 lines only
       const match = line.match(/^#\s*Image:\s*(.+)$/)
       if (match) {
         return match[1].trim()
@@ -125,7 +150,7 @@ export function extractImageNameFromDockerfile(dockerfilePath, workingDir = proc
   } catch (error) {
     // Ignore read errors
   }
-  
+
   return null
 }
 
@@ -265,7 +290,7 @@ export function generateImageTag(argObj, branch, timezone, after) {
 
 // Generate tags from templates
 export function generateTagsFromTemplates(templates, variables) {
-  return templates.map(template => {
+  return templates.map((template) => {
     let result = template
     for (const [key, value] of Object.entries(variables)) {
       result = result.replace(new RegExp(`{${key}}`, 'g'), value)
@@ -275,25 +300,30 @@ export function generateTagsFromTemplates(templates, variables) {
 }
 
 // Create template variables
-export function createTemplateVariables(branch, tag, timezone, sha, repositoryName) {
+export function createTemplateVariables(
+  branch,
+  tag,
+  timezone,
+  sha,
+  repositoryName,
+) {
   const variables = {
-    repo: repositoryName,
-    sha: sha.substring(0, 7) // Short SHA
+    sha: sha.substring(0, 7), // Short SHA
   }
-  
+
   if (branch) {
     variables.branch = branch
   }
-  
+
   if (tag) {
     variables.tag = tag
   }
-  
+
   if (timezone) {
     const now = new Date()
     variables.timestamp = format(toZonedTime(now, timezone), 'yyyyMMddHHmm')
   }
-  
+
   return variables
 }
 
@@ -305,7 +335,7 @@ export async function generateBuildArgsNew(
   buildYaml,
   imagesYaml,
   githubContext,
-  workingDir = process.cwd()
+  workingDir = process.cwd(),
 ) {
   // Validate token
   if (!token || token.trim() === '') {
@@ -314,7 +344,7 @@ export async function generateBuildArgsNew(
 
   // Load configuration
   const projectConfig = loadProjectConfig(workingDir)
-  
+
   // Parse YAML inputs
   let tagsConfig = projectConfig.tags
   let buildConfig = projectConfig.build
@@ -342,7 +372,7 @@ export async function generateBuildArgsNew(
     try {
       const parsedImages = load(imagesYaml)
       if (Array.isArray(parsedImages)) {
-        explicitImages = parsedImages.map(img => imageSchema.parse(img))
+        explicitImages = parsedImages.map((img) => imageSchema.parse(img))
       }
     } catch (error) {
       throw new Error(`❌ Failed to parse images YAML: ${error.message}`)
@@ -353,7 +383,7 @@ export async function generateBuildArgsNew(
   const octokit = new Octokit({ auth: token })
   const { repository, after, ref } = githubContext.payload
   const { branch, tag } = parseGitRef(ref)
-  
+
   // Get repository changes for change detection
   const compare = await getRepositoryChanges(octokit, repository, after)
   const changedFiles = compare.data.files || []
@@ -363,41 +393,44 @@ export async function generateBuildArgsNew(
 
   if (explicitImages.length > 0) {
     // Use explicit image specifications (highest priority)
-    imagesToProcess = explicitImages.map(img => ({
+    imagesToProcess = explicitImages.map((img) => ({
       dockerfile: img.dockerfile,
-      name: img.name
+      name: img.name,
     }))
   } else {
     // Auto-detect Dockerfiles
     const dockerfiles = await findDockerfiles(workingDir)
-    
+
     if (dockerfiles.length === 0) {
       throw new Error('❌ No Dockerfiles found in the repository')
     }
-    
+
     if (dockerfiles.length === 1) {
       // Single Dockerfile: use repository name
       imagesToProcess.push({
         dockerfile: dockerfiles[0],
-        name: repository.name
+        name: repository.name,
       })
     } else {
       // Multiple Dockerfiles: require image names
       for (const dockerfilePath of dockerfiles) {
-        const imageName = extractImageNameFromDockerfile(dockerfilePath, workingDir)
-        
+        const imageName = extractImageNameFromDockerfile(
+          dockerfilePath,
+          workingDir,
+        )
+
         if (!imageName) {
           throw new Error(
             `❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
-            `💡 Solutions:\n` +
-            `   - Add comment: # Image: my-image-name\n` +
-            `   - Use explicit images parameter in action`
+              `💡 Solutions:\n` +
+              `   - Add comment: # Image: my-image-name\n` +
+              `   - Use explicit images parameter in action`,
           )
         }
-        
+
         imagesToProcess.push({
           dockerfile: dockerfilePath,
-          name: imageName
+          name: imageName,
         })
       }
     }
@@ -411,38 +444,46 @@ export async function generateBuildArgsNew(
   // Generate build arguments based on git event
   const outputs = []
   const templateVariables = createTemplateVariables(
-    branch, 
-    tag, 
-    timezone, 
-    after, 
-    repository.name
+    branch,
+    tag,
+    timezone,
+    after,
+    repository.name,
   )
 
   for (const image of imagesToProcess) {
     // Check build conditions
     if (tag && buildConfig.on_tag_push) {
       // Tag push: always build
-      const tags = generateTagsFromTemplates(tagsConfig.tag_pushed, templateVariables)
-      
+      const tags = generateTagsFromTemplates(
+        tagsConfig.tag_pushed,
+        templateVariables,
+      )
+
       for (const tagName of tags) {
         outputs.push({
           path: image.dockerfile,
           name: image.name,
-          tag: tagName
+          tag: tagName,
         })
       }
     } else if (branch && buildConfig.on_branch_push) {
       // Branch push: check for changes
-      const hasChanges = changedFiles.some(file => file.filename === image.dockerfile)
-      
+      const hasChanges = changedFiles.some(
+        (file) => file.filename === image.dockerfile,
+      )
+
       if (hasChanges) {
-        const tags = generateTagsFromTemplates(tagsConfig.branch_pushed, templateVariables)
-        
+        const tags = generateTagsFromTemplates(
+          tagsConfig.branch_pushed,
+          templateVariables,
+        )
+
         for (const tagName of tags) {
           outputs.push({
             path: image.dockerfile,
             name: image.name,
-            tag: tagName
+            tag: tagName,
           })
         }
       }
@@ -451,7 +492,7 @@ export async function generateBuildArgsNew(
 
   return {
     buildArgs: outputs,
-    validationErrors: []
+    validationErrors: [],
   }
 }
 

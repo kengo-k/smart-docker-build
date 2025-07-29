@@ -227,12 +227,12 @@ describe('loadProjectConfig', () => {
     expect(config).toEqual({
       tags: {
         tag_pushed: ['{tag}'],
-        branch_pushed: ['{branch}-{timestamp}-{sha}']
+        branch_pushed: ['{branch}-{timestamp}-{sha}'],
       },
       build: {
         on_branch_push: true,
-        on_tag_push: true
-      }
+        on_tag_push: true,
+      },
     })
   })
 })
@@ -248,15 +248,15 @@ describe('generateTagsFromTemplates', () => {
   test('should generate tags from templates', () => {
     const templates = ['{tag}', '{branch}-{sha}']
     const variables = { tag: 'v1.0.0', branch: 'main', sha: 'abc1234' }
-    
+
     const result = generateTagsFromTemplates(templates, variables)
     expect(result).toEqual(['v1.0.0', 'main-abc1234'])
   })
-  
+
   test('should handle missing variables', () => {
     const templates = ['{tag}', '{branch}-{missing}']
     const variables = { tag: 'v1.0.0', branch: 'main' }
-    
+
     const result = generateTagsFromTemplates(templates, variables)
     expect(result).toEqual(['v1.0.0', 'main-{missing}'])
   })
@@ -264,23 +264,33 @@ describe('generateTagsFromTemplates', () => {
 
 describe('createTemplateVariables', () => {
   test('should create template variables', () => {
-    const variables = createTemplateVariables('main', 'v1.0.0', 'UTC', 'abc1234567', 'my-repo')
-    
+    const variables = createTemplateVariables(
+      'main',
+      'v1.0.0',
+      'UTC',
+      'abc1234567',
+      'my-repo',
+    )
+
     expect(variables).toMatchObject({
-      repo: 'my-repo',
       sha: 'abc1234',
       branch: 'main',
-      tag: 'v1.0.0'
+      tag: 'v1.0.0',
     })
     expect(variables.timestamp).toMatch(/^\d{12}$/)
   })
-  
+
   test('should handle missing branch and tag', () => {
-    const variables = createTemplateVariables(null, null, 'UTC', 'abc1234567', 'my-repo')
-    
+    const variables = createTemplateVariables(
+      null,
+      null,
+      'UTC',
+      'abc1234567',
+      'my-repo',
+    )
+
     expect(variables).toMatchObject({
-      repo: 'my-repo',
-      sha: 'abc1234'
+      sha: 'abc1234',
     })
     expect(variables.branch).toBeUndefined()
     expect(variables.tag).toBeUndefined()

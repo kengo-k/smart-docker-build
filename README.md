@@ -115,7 +115,6 @@ Customize your image tags using these variables:
 | `{branch}` | Branch name | `main`, `feature-auth` |
 | `{sha}` | Short commit SHA | `abc1234` |
 | `{timestamp}` | Build timestamp | `202501291430` |
-| `{repo}` | Repository name | `my-awesome-app` |
 
 ### Tag Examples
 
@@ -124,7 +123,7 @@ tags:
   tag_pushed: ["{tag}"]                    # → v1.0.0
   tag_pushed: ["{tag}", "latest"]          # → v1.0.0, latest
   branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
-  branch_pushed: ["{repo}-{timestamp}"]    # → my-app-202501291430
+  branch_pushed: ["{branch}-{timestamp}"]  # → main-202501291430
 ```
 
 ## 🎛️ Configuration Options
