@@ -1,217 +1,270 @@
-# Docker Image Builder
+# Smart Docker Build
 
 [![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml)
 [![Format](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This GitHub Action automatically builds Docker images and pushes them to the GitHub Container Registry (GHCR) whenever a Dockerfile is committed to a repository and a branch or tag is pushed.
+A GitHub Action that **intelligently** builds and pushes Docker images with zero configuration required. Automatically detects Dockerfiles, generates smart image names, and creates flexible tags using customizable templates.
 
-## Usage
+## 🚀 Key Features
 
-To use this action in your workflow, add the following step to your `.github/workflows/main.yml` file:
+- **🔍 Zero Configuration**: Works out-of-the-box for single Dockerfile projects
+- **🧠 Smart Detection**: Automatically finds and processes all Dockerfiles
+- **🏷️ Flexible Tagging**: Template-based tag generation with variables
+- **⚙️ Easy Customization**: Optional configuration file for advanced control
+- **🔄 Change Detection**: Only builds when Dockerfiles are modified (configurable)
+- **📦 GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
+
+## 🎯 Quick Start
+
+### Simple Project (Zero Configuration)
+
+For projects with a single `Dockerfile` in the root:
 
 ```yaml
-name: 'Test to publish Docker image'
+name: Build Docker Image
 on:
   push:
-    branches:
-      - main
-    tags:
-      - '*'
+    branches: [main]
+  release:
+    types: [published]
 
 jobs:
-  test:
-    runs-on: ubuntu-22.04
+  build:
+    runs-on: ubuntu-latest
     steps:
-      - name: 'Test'
-        uses: kengo-k/actions-docker-build@v1
+      - uses: kengo-k/smart-docker-build@v1
         with:
-          token: ${{ secrets.GHCR_TOKEN }}
-          timezone: 'Asia/Tokyo'
-          args: |
-            - path: <path-to-your-Dockerfile>
-              name: <your-image-name>
-              on_branch_pushed: true
-              on_branch_changed: true
-              on_tag_pushed: true
-              include_branch_name: true
-              include_timestamp: true
-              include_commit_sha: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### Input Arguments
+**That's it!** The action will:
+- 🔍 Detect your `Dockerfile` automatically
+- 🏷️ Use repository name as image name
+- 📦 Build and push to `ghcr.io/username/repo-name`
+- 🏷️ Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
 
-- `token` (required): A token with permissions to access the GitHub repository information and push images to GHCR.
-- `timezone` (optional): The timezone used for generating timestamps in the image tags. Default is UTC.
-- `args` (required): An array of objects specifying the configuration values for building Dockerfiles. Each object should contain the following properties:
-  - `path` (required): The path to the Dockerfile.
-  - `name` (required): The name of the built image.
-  - `on_branch_pushed` (optional): Whether to build the image when a branch is pushed. Default is `true`.
-  - `on_branch_changed` (optional): If `on_branch_pushed` is `true`, only build the image if the Dockerfile is included in the commit. Default is `true`.
-  - `on_tag_pushed` (optional): Whether to build the image when a tag is pushed. Default is `true`.
-  - `include_branch_name` (optional): Whether to include the branch name in the image tag when a branch is pushed. Default is `true`.
-  - `include_timestamp` (optional): Whether to include a timestamp in the image tag when a branch is pushed. Default is `true`.
-  - `include_commit_sha` (optional): Whether to include the commit ID in the image tag when a branch is pushed. Default is `true`.
+## 📋 Usage Examples
 
-## How It Works
+### Multi-Service Projects
 
-When a branch or tag is pushed to the repository, this action will:
-
-1. Check if a Dockerfile is present in the repository based on the provided `path` in the `args` configuration.
-2. If `on_branch_pushed` is `true` and the push event is for a branch, build the Docker image.
-3. If `on_branch_changed` is `true`, only build the image if the Dockerfile is included in the commit.
-4. If `on_tag_pushed` is `true` and the push event is for a tag, build the Docker image.
-5. Generate an image tag based on the specified options (`include_branch_name`, `include_timestamp`, `include_commit_sha`).
-6. Build the Docker image using the provided Dockerfile and image name.
-7. Push the built image to the GitHub Container Registry (GHCR) using the generated tag.
-
-This action simplifies the process of building and pushing Docker images to GHCR, making it easier to automate your container deployment workflow.
-
----
-
-## 🚧 Planned UX Improvements (Under Development)
-
-The current version requires explicit configuration for each Dockerfile. We are working on a more user-friendly approach:
-
-### Current Version (v1.0)
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    args: |
-      - path: api/Dockerfile
-        name: my-api
-      - path: worker/Dockerfile
-        name: my-worker
-```
-
-### Planned Version (v1.1+) - Zero Configuration
-```yaml
-# Automatic Dockerfile detection and smart image naming
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    # That's it! Everything else is automatic
-```
-
-### Smart Image Naming Rules (Priority Order)
-0. **Explicit args specification**: Highest priority, maintains backward compatibility
-1. **Configuration file**: `.docker-image.yml` or `docker-image.json` in same directory
-2. **Dockerfile comment**: `# Image: my-custom-image` at the top of Dockerfile
-3. **Single Dockerfile fallback**: Repository name (only when repository contains exactly one Dockerfile)
-4. **Multiple Dockerfiles**: Error if no explicit naming found
-
-### Examples
-
-#### Mixed Usage (Explicit + Automatic)
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    token: ${{ secrets.GITHUB_TOKEN }}
-    args: |
-      - path: api/Dockerfile
-        name: explicit-api  # Explicit specification (priority 0)
-      # worker/Dockerfile will be auto-detected and named automatically
-```
-
-#### Directory Structure Examples
-```
-my-repo/
-└── Dockerfile  # No config → Image name: "my-repo" (fallback)
-
-multi-service/
-├── api/
-│   ├── Dockerfile  # Image: api-server (comment)
-│   └── .docker-image.yml  # name: custom-api (config file wins)
-└── worker/Dockerfile  # No config → ERROR (multiple Dockerfiles)
-```
-
-#### Dockerfile Comment Examples
-
-**Single Dockerfile**: No comment needed, repository name is used automatically.
-
-**Multiple Dockerfiles**: Add `# Image:` comment to specify image names:
+For projects with multiple Dockerfiles, add `# Image:` comments:
 
 ```dockerfile
 # Image: my-api-server
 FROM node:18
-
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
+# ... rest of your Dockerfile
 ```
 
 ```dockerfile
-# Image: database-migration
-FROM alpine:3.18
-
-RUN apk add --no-cache postgresql-client
-COPY scripts/ /scripts/
-CMD ["/scripts/migrate.sh"]
+# Image: background-worker
+FROM python:3.11
+WORKDIR /app
+# ... rest of your Dockerfile
 ```
 
-**Error Case**: Multiple Dockerfiles without `# Image:` comments will result in an error with guidance on how to resolve it.
+### Custom Tag Templates
 
-This approach provides:
-- **Zero configuration** for simple cases (single Dockerfile)
-- **Explicit control** when needed (multiple services)
-- **Predictable behavior** (no unexpected image names)
-- **Clear error messages** with solution guidance
-
-### Global Configuration File
-
-Create `smart-docker-build.yml` in your project root for custom tag strategies:
+Create `smart-docker-build.yml` in your project root:
 
 ```yaml
-# Smart Docker Build Configuration
-# Place this file in your project root
-
-# Tag generation templates
 tags:
-  # Tags generated when a Git tag is pushed
+  # Release tags: v1.0.0 + latest
   tag_pushed: ["{tag}", "latest"]
 
-  # Tags generated when a branch is pushed
-  branch_pushed: ["{branch}-{timestamp}-{sha}"]
+  # Branch tags: feature-auth-abc1234
+  branch_pushed: ["{branch}-{sha}"]
+
+build:
+  on_branch_push: true   # Build on branch push (when Dockerfile changes)
+  on_tag_push: true      # Build on tag/release (always)
+```
+
+### Advanced Configuration
+
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    # Override default timezone for timestamps
+    timezone: 'Asia/Tokyo'
+    # Custom tag templates
+    tags: |
+      tag_pushed: ["{tag}", "latest", "stable"]
+      branch_pushed: ["{branch}-{timestamp}"]
+    # Custom build triggers
+    build: |
+      on_branch_push: false  # Only build on releases
+      on_tag_push: true
+    # Explicit image specification (highest priority)
+    images: |
+      - dockerfile: api/Dockerfile
+        name: my-api
+      - dockerfile: worker/Dockerfile.prod
+        name: my-worker
+```
+
+## 🏷️ Tag Template Variables
+
+Customize your image tags using these variables:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `{tag}` | Git tag name | `v1.0.0`, `release-2024` |
+| `{branch}` | Branch name | `main`, `feature-auth` |
+| `{sha}` | Short commit SHA | `abc1234` |
+| `{timestamp}` | Build timestamp | `202501291430` |
+| `{repo}` | Repository name | `my-awesome-app` |
+
+### Tag Examples
+
+```yaml
+tags:
+  tag_pushed: ["{tag}"]                    # → v1.0.0
+  tag_pushed: ["{tag}", "latest"]          # → v1.0.0, latest
+  branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
+  branch_pushed: ["{repo}-{timestamp}"]    # → my-app-202501291430
+```
+
+## 🎛️ Configuration Options
+
+### Project Configuration File
+
+Create `smart-docker-build.yml` in your project root:
+
+```yaml
+# Tag generation templates
+tags:
+  tag_pushed: ["{tag}", "latest"]                    # Git tag pushes
+  branch_pushed: ["{branch}-{timestamp}-{sha}"]     # Branch pushes
 
 # Build triggers
 build:
-  # Build when branch is pushed (only if Dockerfile changed)
-  on_branch_push: true
-
-  # Build when tag is pushed (always build for releases)
-  on_tag_push: true
-
-# Available template variables:
-# {tag}       - Git tag name (e.g., "v1.0.0")
-# {branch}    - Branch name (e.g., "main", "feature/auth")
-# {sha}       - Short commit SHA (e.g., "abc1234")
-# {timestamp} - Timestamp in YYYYMMDDHHMM format
-# {repo}      - Repository name
+  on_branch_push: true    # Build when branch is pushed (only if Dockerfile changed)
+  on_tag_push: true       # Build when tag is pushed (always build)
 ```
 
-### Default Behavior (No Configuration File)
+### Action Parameters
 
-When no `smart-docker-build.yml` exists, these defaults are used:
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `token` | ✅ | - | GitHub token for repository access and GHCR push |
+| `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
+| `tags` | ❌ | - | YAML string overriding tag templates |
+| `build` | ❌ | - | YAML string overriding build triggers |
+| `images` | ❌ | - | YAML array for explicit image specifications |
 
-```yaml
-tags:
-  tag_pushed: ["{tag}"]                        # Simple tag names
-  branch_pushed: ["{branch}-{timestamp}-{sha}"] # Detailed branch tags
+## 🔍 Image Name Detection
 
-build:
-  on_branch_push: true  # Build on branch push (only if Dockerfile changed)
-  on_tag_push: true     # Build on tag push (always build for releases)
-```
+The action determines image names using this priority order:
 
-**Complete zero-config example:**
+1. **Explicit specification** (highest priority)
+   ```yaml
+   images: |
+     - dockerfile: api/Dockerfile
+       name: my-api-server
+   ```
+
+2. **Dockerfile comment**
+   ```dockerfile
+   # Image: my-custom-name
+   FROM alpine:3.18
+   ```
+
+3. **Single Dockerfile fallback**
+   - Repository name (only if exactly 1 Dockerfile exists)
+
+4. **Error** (multiple Dockerfiles without names)
+   ```
+   ❌ Multiple Dockerfiles found but no image name specified for worker/Dockerfile
+   💡 Solutions:
+      - Add comment: # Image: my-worker
+      - Use explicit images parameter
+   ```
+
+## 📁 Project Structure Examples
+
+### Single Service
 ```
 my-app/
 └── Dockerfile
 ```
-- Image name: `my-app` (repository name)
-- Tag examples: `v1.0.0` (on tag), `main-202501291430-abc1234` (on branch)
+✅ **Result**: Image name `my-app` (automatic)
+
+### Multi-Service
+```
+microservices/
+├── api/
+│   └── Dockerfile          # Image: user-api
+├── worker/
+│   └── Dockerfile          # Image: task-worker
+└── web/
+    └── Dockerfile.prod     # Image: frontend
+```
+✅ **Result**: Three images with specified names
+
+### Mixed Configuration
+```
+hybrid-app/
+├── smart-docker-build.yml  # Project-wide tag strategy
+├── main/
+│   └── Dockerfile          # Image: main-app
+└── tools/
+    └── Dockerfile          # Image: build-tools
+```
+✅ **Result**: Custom tags + specified names
+
+## 🚀 Default Behavior
+
+When no configuration file exists:
+
+- **Branch pushes**: Build only when Dockerfile changes, tag as `{branch}-{timestamp}-{sha}`
+- **Tag pushes**: Always build, tag as `{tag}`
+- **Registry**: GitHub Container Registry (GHCR)
+- **Timezone**: UTC
+
+## 🔄 How It Works
+
+1. **Detection**: Scans repository for all Dockerfiles (skips `node_modules`, `.git`, etc.)
+2. **Naming**: Determines image names using priority rules
+3. **Change Check**: For branch pushes, only builds if Dockerfile was modified
+4. **Tag Generation**: Creates tags from templates with variable substitution
+5. **Build & Push**: Uses Docker to build and push to GHCR
+
+## 🛠️ Advanced Usage
+
+### Custom Timezone
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    timezone: 'America/New_York'  # Affects {timestamp} variable
+```
+
+### Release-Only Builds
+```yaml
+# smart-docker-build.yml
+build:
+  on_branch_push: false  # Skip branch builds
+  on_tag_push: true      # Only build on releases
+```
+
+### Multiple Tags per Push
+```yaml
+tags:
+  tag_pushed: ["{tag}", "latest", "stable"]
+  branch_pushed: ["{branch}-{sha}", "{branch}-latest"]
+```
+
+## 🤝 Contributing
+
+Issues and pull requests are welcome! Please see our [contributing guidelines](CONTRIBUTING.md).
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Made with ❤️ for the GitHub Actions community**
