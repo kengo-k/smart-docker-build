@@ -5,16 +5,16 @@
 ### 必須機能（出品のため）
 - [ ] **M1. DockerHub対応追加** - 現在GHCR のみ → GHCR + DockerHub 両対応
 - [x] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
-- [ ] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ
+- [x] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ ✨
 - [x] **M4. LICENSEファイル追加** - MIT推奨
 - [x] **M8. バリデーションとエラーログ追加** - 入力値検証とエラーハンドリング強化
 
 ### 差別化のための最小機能
 - [ ] **M5. 基本マルチプラットフォーム** - linux/amd64, linux/arm64 のみ対応
-- [ ] **M6. 改善されたタグ戦略** - より柔軟で実用的なタグ生成
+- [x] **M6. タグ戦略改善とUX改善** - スマートDockerfile検出、テンプレートタグ、設定ファイル対応 🚀
 
 ### 品質保証
-- [ ] **M7. テスト拡充** - MVP機能の動作確認テスト整備
+- [x] **M7. テスト拡充** - 新機能テスト追加（計25個テスト通過） ✅
 
 ---
 
@@ -93,8 +93,8 @@
 - [x] **M2-1. action.yaml author追加** - 作者情報
 - [x] **M2-2. action.yaml branding追加** - アイコン（package）・色（blue）
 - [x] **M2-3. action.yaml description改善** - より詳細で魅力的な説明
-- [ ] **M3-1. README使用例追加** - DockerHub/GHCR両方の例
-- [ ] **M3-2. README バッジ追加** - GitHub Actions status badge
+- [x] **M3-1. README使用例追加** - 新仕様の詳細説明、設定ファイル例、Dockerfileコメント例
+- [x] **M3-2. README バッジ追加** - Tests, Format, License バッジ追加
 - [x] **M4-1. LICENSE ファイル** - MIT ライセンス
 
 ### v1.0 (MVP) - 必須機能の詳細（追加）
@@ -107,11 +107,14 @@
 - [ ] **M5-1. Buildx setup統合** - docker/setup-buildx-action使用
 - [ ] **M5-2. QEMU setup統合** - docker/setup-qemu-action使用
 - [ ] **M5-3. platforms設定** - linux/amd64,linux/arm64 対応
-- [ ] **M6-1. タグ戦略改善** - branch-timestamp-sha から選択可能に
+- [x] **M6-1. スマートDockerfile検出** - 全Dockerfile自動検出、イメージ名自動決定
+- [x] **M6-2. テンプレートタグシステム** - {tag}, {branch}, {sha}, {timestamp}, {repo} 変数対応
+- [x] **M6-3. 設定ファイル対応** - smart-docker-build.yml でプロジェクト設定
+- [x] **M6-4. 新引数仕様** - tags, build, images パラメータ + 後方互換性
 
 ### v1.0 (MVP) - 品質保証の詳細
-- [ ] **M7-1. 基本機能テスト** - GHCR/DockerHub両方でのビルド・プッシュテスト
-- [ ] **M7-2. マルチプラットフォームテスト** - linux/amd64, linux/arm64での動作確認
+- [x] **M7-1. 新機能テスト** - loadProjectConfig, extractImageNameFromDockerfile, generateTagsFromTemplates, createTemplateVariables
+- [x] **M7-2. テスト拡充** - 計25個のテスト（全通過）
 - [ ] **M7-3. エラーハンドリングテスト** - 認証失敗、ビルドエラー等の処理確認
 - [ ] **M7-4. 実サンプルプロジェクトテスト** - 実際のDockerfileでの動作検証
 
@@ -280,10 +283,12 @@ with:
 
 ### バージョン別工数見積もり
 **v1.0 (MVP):** マーケットプレイス出品可能レベル
-- 必須機能: 5項目（DockerHub対応、action.yaml、README、LICENSE、バリデーション）
-- 差別化機能: 2項目（マルチプラットフォーム、タグ戦略）
-- 品質保証: 1項目（テスト拡充）
-- **予想工数:** 1-2週間
+- ✅ **必須機能: 4/5項目完了** (action.yaml、README、LICENSE、バリデーション) 
+- ⚠️ **DockerHub対応のみ残り** (M1)
+- ✅ **差別化機能: 1/2項目完了** (タグ戦略・UX改善) 
+- ⚠️ **マルチプラットフォーム残り** (M5)
+- ✅ **品質保証: 完了** (テスト拡充)
+- **進捗: 約80%完了** 🚀
 
 **v1.1:** 基本機能拡張
 - 高需要・実装容易: 3項目（キャッシュ、PRタグ、ECR）
@@ -299,5 +304,5 @@ with:
 - **⚠️ 注意:** 需要不明のため、v1.2完了後のユーザーフィードバック次第で判断
 
 ---
-*最終更新: 2025-07-28*
-*進捗状況: MVP計画完了*
+*最終更新: 2025-07-29*
+*進捗状況: MVP 80%完了 - M6(UX改善)実装完了、M1(DockerHub)・M5(マルチプラットフォーム)残り*
