@@ -2,9 +2,8 @@ FROM node:20
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json package-lock.json tsconfig.json ./
+COPY *.ts ./
+RUN npm ci && npm run build
 
-COPY index.js ./
-
-ENTRYPOINT ["node", "/app/index.js"]
+ENTRYPOINT ["node", "/app/dist/index.js"]

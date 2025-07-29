@@ -62,14 +62,14 @@ describe('parseGitRef', () => {
 describe('shouldBuildForChanges', () => {
   test('should return true when on_branch_changed is false', () => {
     const argObj = { on_branch_changed: false, path: 'Dockerfile' }
-    const changedFiles = []
+    const changedFiles: { filename: string }[] = []
 
     expect(shouldBuildForChanges(argObj, changedFiles)).toBe(true)
   })
 
   test('should return true when Dockerfile is in changed files', () => {
     const argObj = { on_branch_changed: true, path: 'Dockerfile' }
-    const changedFiles = [
+    const changedFiles: { filename: string }[] = [
       { filename: 'Dockerfile' },
       { filename: 'src/app.js' },
     ]
@@ -79,7 +79,10 @@ describe('shouldBuildForChanges', () => {
 
   test('should return false when Dockerfile is not changed', () => {
     const argObj = { on_branch_changed: true, path: 'Dockerfile' }
-    const changedFiles = [{ filename: 'src/app.js' }, { filename: 'README.md' }]
+    const changedFiles: { filename: string }[] = [
+      { filename: 'src/app.js' },
+      { filename: 'README.md' },
+    ]
 
     expect(shouldBuildForChanges(argObj, changedFiles)).toBe(false)
   })

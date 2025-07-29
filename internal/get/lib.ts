@@ -8,8 +8,58 @@ import { z } from 'zod'
 
 import { Octokit } from '@octokit/rest'
 
+// Types
+export interface Config {
+  tags: {
+    tag_pushed: string[]
+    branch_pushed: string[]
+  }
+  build: {
+    on_branch_push: boolean
+    on_tag_push: boolean
+  }
+}
+
+export interface ImageSpec {
+  dockerfile: string
+  name: string
+}
+
+export interface BuildArg {
+  path: string
+  name: string
+  tag: string
+}
+
+export interface GenerateBuildArgsResult {
+  buildArgs: BuildArg[]
+  validationErrors: string[]
+}
+
+export interface TemplateVariables {
+  [key: string]: string
+}
+
+export interface GitRef {
+  branch: string | null
+  tag: string | null
+}
+
+export interface GitHubContext {
+  payload: {
+    repository?: {
+      name: string
+      owner: {
+        login: string
+      }
+    }
+    after?: string
+    ref?: string
+  }
+}
+
 // Default configuration
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: Config = {
   tags: {
     tag_pushed: ['{tag}'],
     branch_pushed: ['{branch}-{timestamp}-{sha}'],
@@ -53,7 +103,7 @@ const imageSchema = z.object({
 })
 
 // Load project configuration
-export function loadProjectConfig(workingDir = process.cwd()) {
+export function loadProjectConfig(workingDir: string = process.cwd()): Config {
   const configPath = resolve(workingDir, 'smart-docker-build.yml')
 
   if (existsSync(configPath)) {
@@ -63,7 +113,7 @@ export function loadProjectConfig(workingDir = process.cwd()) {
       return configSchema.parse(rawConfig)
     } catch (error) {
       throw new Error(
-        `❌ Failed to parse config file ${configPath}: ${error.message}`,
+        `❌ Failed to parse config file ${configPath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
       )
     }
   }
@@ -72,10 +122,12 @@ export function loadProjectConfig(workingDir = process.cwd()) {
 }
 
 // Find all Dockerfiles in the project
-export async function findDockerfiles(workingDir = process.cwd()) {
-  const dockerfiles = []
+export async function findDockerfiles(
+  workingDir: string = process.cwd(),
+): Promise<string[]> {
+  const dockerfiles: string[] = []
 
-  async function searchDir(dir) {
+  async function searchDir(dir: string): Promise<void> {
     try {
       const entries = await readdir(dir, { withFileTypes: true })
 
@@ -110,9 +162,9 @@ export async function findDockerfiles(workingDir = process.cwd()) {
 
 // Extract image name from Dockerfile comment
 export function extractImageNameFromDockerfile(
-  dockerfilePath,
-  workingDir = process.cwd(),
-) {
+  dockerfilePath: string,
+  workingDir: string = process.cwd(),
+): string | null {
   const absolutePath = resolve(workingDir, dockerfilePath)
 
   if (!existsSync(absolutePath)) {
@@ -137,7 +189,10 @@ export function extractImageNameFromDockerfile(
   return null
 }
 
-export function validateDockerfile(dockerfilePath, workingDir = process.cwd()) {
+export function validateDockerfile(
+  dockerfilePath: string,
+  workingDir: string = process.cwd(),
+): boolean {
   // Check if file exists
   const absolutePath = resolve(workingDir, dockerfilePath)
   if (!existsSync(absolutePath)) {
@@ -149,7 +204,11 @@ export function validateDockerfile(dockerfilePath, workingDir = process.cwd()) {
   return true
 }
 
-export async function getRepositoryChanges(octokit, repository, after) {
+export async function getRepositoryChanges(
+  octokit: Octokit,
+  repository: { owner: { login: string }; name: string },
+  after: string,
+) {
   return await octokit.repos.compareCommits({
     owner: repository.owner.login,
     repo: repository.name,
@@ -158,9 +217,9 @@ export async function getRepositoryChanges(octokit, repository, after) {
   })
 }
 
-export function parseGitRef(ref) {
-  let branch = null
-  let tag = null
+export function parseGitRef(ref: string): GitRef {
+  let branch: string | null = null
+  let tag: string | null = null
 
   if (ref.startsWith('refs/heads/')) {
     branch = ref.replace('refs/heads/', '')
@@ -173,7 +232,10 @@ export function parseGitRef(ref) {
   return { branch, tag }
 }
 
-export function shouldBuildForChanges(argObj, changedFiles) {
+export function shouldBuildForChanges(
+  argObj: { on_branch_changed?: boolean; path: string },
+  changedFiles: { filename: string }[],
+): boolean {
   if (!argObj.on_branch_changed) {
     return true // Always build if change checking is disabled
   }
@@ -182,8 +244,17 @@ export function shouldBuildForChanges(argObj, changedFiles) {
   return !!dockerfile
 }
 
-export function generateImageTag(argObj, branch, timezone, after) {
-  const imageTags = []
+export function generateImageTag(
+  argObj: {
+    include_branch_name?: boolean
+    include_timestamp?: boolean
+    include_commit_sha?: boolean
+  },
+  branch: string | null,
+  timezone: string,
+  after: string,
+): string {
+  const imageTags: string[] = []
 
   if (argObj.include_branch_name && branch) {
     imageTags.push(branch)
@@ -203,7 +274,10 @@ export function generateImageTag(argObj, branch, timezone, after) {
 }
 
 // Generate tags from templates
-export function generateTagsFromTemplates(templates, variables) {
+export function generateTagsFromTemplates(
+  templates: string[],
+  variables: TemplateVariables,
+): string[] {
   return templates.map((template) => {
     let result = template
     for (const [key, value] of Object.entries(variables)) {
@@ -215,13 +289,13 @@ export function generateTagsFromTemplates(templates, variables) {
 
 // Create template variables
 export function createTemplateVariables(
-  branch,
-  tag,
-  timezone,
-  sha,
-  repositoryName,
-) {
-  const variables = {
+  branch: string | null,
+  tag: string | null,
+  timezone: string,
+  sha: string,
+  repositoryName: string,
+): TemplateVariables {
+  const variables: TemplateVariables = {
     sha: sha.substring(0, 7), // Short SHA
   }
 
@@ -243,14 +317,14 @@ export function createTemplateVariables(
 
 // Generate build arguments with smart detection
 export async function generateBuildArgs(
-  token,
-  timezone,
-  tagsYaml,
-  buildYaml,
-  imagesYaml,
-  githubContext,
-  workingDir = process.cwd(),
-) {
+  token: string,
+  timezone: string,
+  tagsYaml: string,
+  buildYaml: string,
+  imagesYaml: string,
+  githubContext: GitHubContext,
+  workingDir: string = process.cwd(),
+): Promise<GenerateBuildArgsResult> {
   // Validate token
   if (!token || token.trim() === '') {
     throw new Error('❌ Token is required but not provided')
@@ -262,14 +336,16 @@ export async function generateBuildArgs(
   // Parse YAML inputs
   let tagsConfig = projectConfig.tags
   let buildConfig = projectConfig.build
-  let explicitImages = []
+  let explicitImages: ImageSpec[] = []
 
   if (tagsYaml) {
     try {
       const parsedTags = load(tagsYaml)
       tagsConfig = configSchema.shape.tags.parse(parsedTags)
     } catch (error) {
-      throw new Error(`❌ Failed to parse tags YAML: ${error.message}`)
+      throw new Error(
+        `❌ Failed to parse tags YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
     }
   }
 
@@ -278,7 +354,9 @@ export async function generateBuildArgs(
       const parsedBuild = load(buildYaml)
       buildConfig = configSchema.shape.build.parse(parsedBuild)
     } catch (error) {
-      throw new Error(`❌ Failed to parse build YAML: ${error.message}`)
+      throw new Error(
+        `❌ Failed to parse build YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
     }
   }
 
@@ -289,13 +367,22 @@ export async function generateBuildArgs(
         explicitImages = parsedImages.map((img) => imageSchema.parse(img))
       }
     } catch (error) {
-      throw new Error(`❌ Failed to parse images YAML: ${error.message}`)
+      throw new Error(
+        `❌ Failed to parse images YAML: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      )
     }
   }
 
   // Get repository information
   const octokit = new Octokit({ auth: token })
   const { repository, after, ref } = githubContext.payload
+
+  if (!repository || !after || !ref) {
+    throw new Error(
+      '❌ Missing required GitHub context information (repository, after, ref)',
+    )
+  }
+
   const { branch, tag } = parseGitRef(ref)
 
   // Get repository changes for change detection
@@ -303,7 +390,7 @@ export async function generateBuildArgs(
   const changedFiles = compare.data.files || []
 
   // Determine images to build
-  let imagesToProcess = []
+  let imagesToProcess: ImageSpec[] = []
 
   if (explicitImages.length > 0) {
     // Use explicit image specifications (highest priority)
@@ -356,7 +443,7 @@ export async function generateBuildArgs(
   }
 
   // Generate build arguments based on git event
-  const outputs = []
+  const outputs: BuildArg[] = []
   const templateVariables = createTemplateVariables(
     branch,
     tag,
