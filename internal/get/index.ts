@@ -21,6 +21,7 @@ async function main(): Promise<void> {
       token,
       timezone,
       github.context,
+      process.env.GITHUB_WORKSPACE!,
     )
 
     // Log validation errors as warnings

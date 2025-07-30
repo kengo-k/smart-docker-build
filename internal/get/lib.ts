@@ -143,9 +143,11 @@ export function extractDockerfileConfig(
   dockerfilePath: string,
   workingDir: string = process.cwd(),
 ): DockerfileConfig {
-  console.log(`[DEBUG] HELOOOOOOOOOOOOO`)
-
   const absolutePath = resolve(workingDir, dockerfilePath)
+  
+  console.log(`[DEBUG] Working directory: ${workingDir}`)
+  console.log(`[DEBUG] Dockerfile path: ${dockerfilePath}`)
+  console.log(`[DEBUG] Absolute path: ${absolutePath}`)
 
   const result: DockerfileConfig = {
     imageName: null,
