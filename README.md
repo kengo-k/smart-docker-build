@@ -50,34 +50,30 @@ There are only **2 simple ways** to configure this action:
 
 ### 1. Project Configuration File
 
-Create `smart-docker-build.yml` in your project root for custom tag templates and build triggers:
+Create `smart-docker-build.yml` in your project root for custom tag templates:
 
 ```yaml
-# Tag generation templates
-tags:
-  tag_pushed: ["{tag}", "latest"]                    # Git tag pushes
-  branch_pushed: ["{branch}-{timestamp}-{sha}"]     # Branch pushes
-
-# Build triggers
-build:
-  on_branch_push: true    # Build when branch is pushed (only if Dockerfile changed)
-  on_tag_push: true       # Build when tag is pushed (always build)
+# Image tag generation templates
+imagetag_on_tag_pushed: ["{tag}", "latest"]                    # Git tag pushes
+imagetag_on_branch_pushed: ["{branch}-{timestamp}-{sha}"]     # Branch pushes
 ```
 
 ### 2. Dockerfile Comments
 
-For projects with multiple Dockerfiles, add `# Image:` comments to specify image names:
+For projects with multiple Dockerfiles, add `# image:` comments to specify image names and optionally override tag configurations:
 
 ```dockerfile
-# Image: my-api-server
+# image: my-api-server
 FROM node:18
 WORKDIR /app
 # ... rest of your Dockerfile
 ```
 
 ```dockerfile
-# Image: background-worker
-FROM python:3.11
+# image: dev-tools
+# imagetag_on_tag_pushed: false
+# imagetag_on_branch_pushed: ["dev-v1.0"]
+FROM alpine:3.18
 WORKDIR /app
 # ... rest of your Dockerfile
 ```
@@ -96,11 +92,10 @@ Customize your image tags using these variables:
 ### Tag Examples
 
 ```yaml
-tags:
-  tag_pushed: ["{tag}"]                    # → v1.0.0
-  tag_pushed: ["{tag}", "latest"]          # → v1.0.0, latest
-  branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
-  branch_pushed: ["{branch}-{timestamp}"]  # → main-202501291430
+imagetag_on_tag_pushed: ["{tag}"]                    # → v1.0.0
+imagetag_on_tag_pushed: ["{tag}", "latest"]          # → v1.0.0, latest
+imagetag_on_branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
+imagetag_on_branch_pushed: ["{branch}-{timestamp}"]  # → main-202501291430
 ```
 
 ## ⚙️ Action Parameters
@@ -125,7 +120,7 @@ The action determines image names using this priority order:
 
 1. **Dockerfile comment** (recommended for multiple Dockerfiles)
    ```dockerfile
-   # Image: my-custom-name
+   # image: my-custom-name
    FROM alpine:3.18
    ```
 
@@ -136,7 +131,7 @@ The action determines image names using this priority order:
    ```
    ❌ Multiple Dockerfiles found but no image name specified for worker/Dockerfile
    💡 Solutions:
-      - Add comment: # Image: my-worker
+      - Add comment: # image: my-worker
       - Create smart-docker-build.yml with explicit image configurations
    ```
 
@@ -153,11 +148,11 @@ my-app/
 ```
 microservices/
 ├── api/
-│   └── Dockerfile          # Image: user-api
+│   └── Dockerfile          # image: user-api
 ├── worker/
-│   └── Dockerfile          # Image: task-worker
+│   └── Dockerfile          # image: task-worker
 └── web/
-    └── Dockerfile.prod     # Image: frontend
+    └── Dockerfile.prod     # image: frontend
 ```
 ✅ **Result**: Three images with specified names
 
@@ -166,9 +161,10 @@ microservices/
 hybrid-app/
 ├── smart-docker-build.yml  # Project-wide tag strategy
 ├── main/
-│   └── Dockerfile          # Image: main-app
+│   └── Dockerfile          # image: main-app
 └── tools/
-    └── Dockerfile          # Image: build-tools
+    └── Dockerfile          # image: build-tools
+                            # imagetag_on_tag_pushed: false
 ```
 ✅ **Result**: Custom tags + specified names
 
@@ -177,7 +173,7 @@ hybrid-app/
 When no configuration file exists:
 
 - **Branch pushes**: Build only when Dockerfile changes, tag as `{branch}-{timestamp}-{sha}`
-- **Tag pushes**: Always build, tag as `{tag}`
+- **Tag pushes**: Always build, tag as `{tag}` and `latest`
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
 
@@ -194,28 +190,25 @@ When no configuration file exists:
 ### Release-Only Builds
 ```yaml
 # smart-docker-build.yml
-build:
-  on_branch_push: false  # Skip branch builds
-  on_tag_push: true      # Only build on releases
+imagetag_on_branch_pushed: false  # Skip branch builds
+imagetag_on_tag_pushed: ["{tag}", "latest"]  # Only build on releases
 ```
 
 ### Multiple Tags per Push
 ```yaml
 # smart-docker-build.yml
-tags:
-  tag_pushed: ["{tag}", "latest", "stable"]
-  branch_pushed: ["{branch}-{sha}", "{branch}-latest"]
+imagetag_on_tag_pushed: ["{tag}", "latest", "stable"]
+imagetag_on_branch_pushed: ["{branch}-{sha}", "{branch}-latest"]
 ```
 
 ### Development vs Production
 ```yaml
 # smart-docker-build.yml
-tags:
-  # Development builds
-  branch_pushed: ["dev-{branch}-{timestamp}"]
+# Development builds
+imagetag_on_branch_pushed: ["dev-{branch}-{timestamp}"]
 
-  # Production releases
-  tag_pushed: ["{tag}", "latest", "production"]
+# Production releases
+imagetag_on_tag_pushed: ["{tag}", "latest", "production"]
 ```
 
 ## 🤝 Contributing

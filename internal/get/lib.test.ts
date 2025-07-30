@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
-import { mkdirSync, rmSync } from 'fs'
+import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 import {
   createTemplateVariables,
+  extractDockerfileConfig,
   extractImageNameFromDockerfile,
   generateImageTag,
   generateTagsFromTemplates,
@@ -110,14 +111,8 @@ describe('loadProjectConfig', () => {
   test('should return default config when file does not exist', () => {
     const config = loadProjectConfig('/nonexistent')
     expect(config).toEqual({
-      tags: {
-        tag_pushed: ['{tag}'],
-        branch_pushed: ['{branch}-{timestamp}-{sha}'],
-      },
-      build: {
-        on_branch_push: true,
-        on_tag_push: true,
-      },
+      imagetag_on_tag_pushed: ['{tag}', 'latest'],
+      imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}'],
     })
   })
 })
@@ -126,6 +121,92 @@ describe('extractImageNameFromDockerfile', () => {
   test('should return null for non-existent file', () => {
     const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile')
     expect(name).toBeNull()
+  })
+})
+
+describe('extractDockerfileConfig', () => {
+  test('should return null values for non-existent file', () => {
+    const config = extractDockerfileConfig('/nonexistent/Dockerfile')
+    expect(config).toEqual({
+      imageName: null,
+      imagetagOnTagPushed: null,
+      imagetagOnBranchPushed: null,
+    })
+  })
+
+  test('should extract basic image name (legacy format)', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# Image: my-app
+FROM node:18
+WORKDIR /app`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imageName).toBe('my-app')
+    expect(config.imagetagOnTagPushed).toBeNull()
+    expect(config.imagetagOnBranchPushed).toBeNull()
+  })
+
+  test('should extract image name (new format)', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: my-app
+FROM node:18
+WORKDIR /app`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imageName).toBe('my-app')
+  })
+
+  test('should extract tag configuration', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: dev-tools
+# imagetag_on_tag_pushed: false
+# imagetag_on_branch_pushed: ["dev-v1.0"]
+FROM alpine:3.18
+WORKDIR /app`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imageName).toBe('dev-tools')
+    expect(config.imagetagOnTagPushed).toBe(false)
+    expect(config.imagetagOnBranchPushed).toEqual(['dev-v1.0'])
+  })
+
+  test('should parse JSON array configuration', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: my-app
+# imagetag_on_tag_pushed: ["{tag}", "latest", "stable"]
+# imagetag_on_branch_pushed: ["{branch}-{sha}"]
+FROM node:18`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imagetagOnTagPushed).toEqual(['{tag}', 'latest', 'stable'])
+    expect(config.imagetagOnBranchPushed).toEqual(['{branch}-{sha}'])
+  })
+
+  test('should handle single string as array', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: my-app
+# imagetag_on_tag_pushed: production
+# imagetag_on_branch_pushed: dev-latest
+FROM node:18`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imagetagOnTagPushed).toEqual(['production'])
+    expect(config.imagetagOnBranchPushed).toEqual(['dev-latest'])
   })
 })
 
@@ -192,7 +273,6 @@ describe('createTemplateVariables', () => {
       'v1.0.0',
       'UTC',
       'abc1234567',
-      'my-repo',
     )
 
     expect(variables).toMatchObject({
@@ -204,13 +284,7 @@ describe('createTemplateVariables', () => {
   })
 
   test('should handle missing branch and tag', () => {
-    const variables = createTemplateVariables(
-      null,
-      null,
-      'UTC',
-      'abc1234567',
-      'my-repo',
-    )
+    const variables = createTemplateVariables(null, null, 'UTC', 'abc1234567')
 
     expect(variables).toMatchObject({
       sha: 'abc1234',

@@ -9,15 +9,11 @@ import { z } from 'zod'
 import { Octokit } from '@octokit/rest'
 
 // Types
+export type TagConfig = false | string[]
+
 export interface Config {
-  tags: {
-    tag_pushed: string[]
-    branch_pushed: string[]
-  }
-  build: {
-    on_branch_push: boolean
-    on_tag_push: boolean
-  }
+  imagetag_on_tag_pushed: TagConfig
+  imagetag_on_branch_pushed: TagConfig
 }
 
 export interface ImageSpec {
@@ -60,35 +56,20 @@ export interface GitHubContext {
 
 // Default configuration
 const DEFAULT_CONFIG: Config = {
-  tags: {
-    tag_pushed: ['{tag}'],
-    branch_pushed: ['{branch}-{timestamp}-{sha}'],
-  },
-  build: {
-    on_branch_push: true,
-    on_tag_push: true,
-  },
+  imagetag_on_tag_pushed: ['{tag}', 'latest'],
+  imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}'],
 }
 
 // Configuration schemas
+const tagConfigSchema = z.union([z.literal(false), z.array(z.string())])
+
 const configSchema = z.object({
-  tags: z
-    .object({
-      tag_pushed: z.array(z.string()).optional().default(['{tag}']),
-      branch_pushed: z
-        .array(z.string())
-        .optional()
-        .default(['{branch}-{timestamp}-{sha}']),
-    })
+  imagetag_on_tag_pushed: tagConfigSchema
     .optional()
-    .default(DEFAULT_CONFIG.tags),
-  build: z
-    .object({
-      on_branch_push: z.boolean().optional().default(true),
-      on_tag_push: z.boolean().optional().default(true),
-    })
+    .default(['{tag}', 'latest']),
+  imagetag_on_branch_pushed: tagConfigSchema
     .optional()
-    .default(DEFAULT_CONFIG.build),
+    .default(['{branch}-{timestamp}-{sha}']),
 })
 
 // Load project configuration
@@ -149,33 +130,99 @@ export async function findDockerfiles(
   return dockerfiles
 }
 
-// Extract image name from Dockerfile comment
-export function extractImageNameFromDockerfile(
+// Extract image configuration from Dockerfile comments
+export interface DockerfileConfig {
+  imageName: string | null
+  imagetagOnTagPushed: TagConfig | null
+  imagetagOnBranchPushed: TagConfig | null
+}
+
+export function extractDockerfileConfig(
   dockerfilePath: string,
   workingDir: string = process.cwd(),
-): string | null {
+): DockerfileConfig {
   const absolutePath = resolve(workingDir, dockerfilePath)
 
+  const result: DockerfileConfig = {
+    imageName: null,
+    imagetagOnTagPushed: null,
+    imagetagOnBranchPushed: null,
+  }
+
   if (!existsSync(absolutePath)) {
-    return null
+    return result
   }
 
   try {
     const content = readFileSync(absolutePath, 'utf8')
     const lines = content.split('\n')
 
-    for (const line of lines.slice(0, 5)) {
-      // Check first 5 lines only
-      const match = line.match(/^#\s*Image:\s*(.+)$/)
-      if (match) {
-        return match[1].trim()
+    for (const line of lines.slice(0, 10)) {
+      // Check first 10 lines
+      // Support both "Image:" and "image:" (case insensitive)
+      const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
+      if (imageMatch) {
+        result.imageName = imageMatch[1].trim()
+        continue
+      }
+
+      // imagetag_on_tag_pushed configuration
+      const tagPushedMatch = line.match(/^#\s*imagetag_on_tag_pushed:\s*(.+)$/)
+      if (tagPushedMatch) {
+        const value = tagPushedMatch[1].trim()
+        if (value === 'false') {
+          result.imagetagOnTagPushed = false
+        } else {
+          try {
+            // Parse as JSON array
+            const parsed = JSON.parse(value)
+            if (Array.isArray(parsed)) {
+              result.imagetagOnTagPushed = parsed
+            }
+          } catch {
+            // If not valid JSON, treat as single string
+            result.imagetagOnTagPushed = [value]
+          }
+        }
+        continue
+      }
+
+      // imagetag_on_branch_pushed configuration
+      const branchPushedMatch = line.match(
+        /^#\s*imagetag_on_branch_pushed:\s*(.+)$/,
+      )
+      if (branchPushedMatch) {
+        const value = branchPushedMatch[1].trim()
+        if (value === 'false') {
+          result.imagetagOnBranchPushed = false
+        } else {
+          try {
+            // Parse as JSON array
+            const parsed = JSON.parse(value)
+            if (Array.isArray(parsed)) {
+              result.imagetagOnBranchPushed = parsed
+            }
+          } catch {
+            // If not valid JSON, treat as single string
+            result.imagetagOnBranchPushed = [value]
+          }
+        }
+        continue
       }
     }
   } catch (error) {
     // Ignore read errors
   }
 
-  return null
+  return result
+}
+
+// Legacy function for backward compatibility
+export function extractImageNameFromDockerfile(
+  dockerfilePath: string,
+  workingDir: string = process.cwd(),
+): string | null {
+  return extractDockerfileConfig(dockerfilePath, workingDir).imageName
 }
 
 export async function getRepositoryChanges(
@@ -295,7 +342,6 @@ export function createTemplateVariables(
   tag: string | null,
   timezone: string,
   sha: string,
-  repositoryName: string,
 ): TemplateVariables {
   const variables: TemplateVariables = {
     sha: sha.substring(0, 7), // Short SHA
@@ -331,13 +377,21 @@ export async function generateBuildArgs(
 
   // Load configuration from project file only
   const projectConfig = loadProjectConfig(workingDir)
-  const tagsConfig = projectConfig.tags
-  const buildConfig = projectConfig.build
 
   // Validate template variables in tag configuration
   const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
-  validateTemplateVariables(tagsConfig.tag_pushed, availableVariables)
-  validateTemplateVariables(tagsConfig.branch_pushed, availableVariables)
+  if (Array.isArray(projectConfig.imagetag_on_tag_pushed)) {
+    validateTemplateVariables(
+      projectConfig.imagetag_on_tag_pushed,
+      availableVariables,
+    )
+  }
+  if (Array.isArray(projectConfig.imagetag_on_branch_pushed)) {
+    validateTemplateVariables(
+      projectConfig.imagetag_on_branch_pushed,
+      availableVariables,
+    )
+  }
 
   // Get repository information
   const octokit = new Octokit({ auth: token })
@@ -362,36 +416,42 @@ export async function generateBuildArgs(
     throw new Error('❌ No Dockerfiles found in the repository')
   }
 
-  const imagesToProcess: ImageSpec[] = []
+  interface ImageToProcess extends ImageSpec {
+    dockerfileConfig: DockerfileConfig
+  }
+
+  const imagesToProcess: ImageToProcess[] = []
 
   if (dockerfiles.length === 1) {
     // Single Dockerfile: check for image name comment first
-    const imageName = extractImageNameFromDockerfile(dockerfiles[0], workingDir)
+    const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir)
 
     imagesToProcess.push({
       dockerfile: dockerfiles[0],
-      name: imageName || repository.name, // Use repository name as fallback
+      name: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
+      dockerfileConfig,
     })
   } else {
     // Multiple Dockerfiles: require image names
     for (const dockerfilePath of dockerfiles) {
-      const imageName = extractImageNameFromDockerfile(
+      const dockerfileConfig = extractDockerfileConfig(
         dockerfilePath,
         workingDir,
       )
 
-      if (!imageName) {
+      if (!dockerfileConfig.imageName) {
         throw new Error(
           `❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
             `💡 Solutions:\n` +
-            `   - Add comment: # Image: my-image-name\n` +
+            `   - Add comment: # image: my-image-name\n` +
             `   - Create smart-docker-build.yml with explicit image configurations`,
         )
       }
 
       imagesToProcess.push({
         dockerfile: dockerfilePath,
-        name: imageName,
+        name: dockerfileConfig.imageName,
+        dockerfileConfig,
       })
     }
   }
@@ -403,15 +463,25 @@ export async function generateBuildArgs(
     tag,
     timezone,
     after,
-    repository.name,
   )
 
   for (const image of imagesToProcess) {
+    // Get effective configuration (Dockerfile config overrides project config)
+    const effectiveTagPushedConfig =
+      image.dockerfileConfig.imagetagOnTagPushed !== null
+        ? image.dockerfileConfig.imagetagOnTagPushed
+        : projectConfig.imagetag_on_tag_pushed
+
+    const effectiveBranchPushedConfig =
+      image.dockerfileConfig.imagetagOnBranchPushed !== null
+        ? image.dockerfileConfig.imagetagOnBranchPushed
+        : projectConfig.imagetag_on_branch_pushed
+
     // Check build conditions
-    if (tag && buildConfig.on_tag_push) {
-      // Tag push: always build
+    if (tag && Array.isArray(effectiveTagPushedConfig)) {
+      // Tag push: always build if config is array
       const tags = generateTagsFromTemplates(
-        tagsConfig.tag_pushed,
+        effectiveTagPushedConfig,
         templateVariables,
       )
 
@@ -422,7 +492,7 @@ export async function generateBuildArgs(
           tag: tagName,
         })
       }
-    } else if (branch && buildConfig.on_branch_push) {
+    } else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
       // Branch push: check for changes
       const hasChanges = changedFiles.some(
         (file) => file.filename === image.dockerfile,
@@ -430,7 +500,7 @@ export async function generateBuildArgs(
 
       if (hasChanges) {
         const tags = generateTagsFromTemplates(
-          tagsConfig.branch_pushed,
+          effectiveBranchPushedConfig,
           templateVariables,
         )
 
