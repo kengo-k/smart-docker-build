@@ -9,7 +9,7 @@ A GitHub Action that **intelligently** builds and pushes Docker images with zero
 ## Key Features
 
 - **Zero Configuration**: Works out-of-the-box for single Dockerfile projects
-- **Smart Detection**: Automatically finds and processes all Dockerfiles
+- **Smart Detection**: Automatically finds and processes all Dockerfiles (`Dockerfile` and `Dockerfile.*`)
 - **Flexible Tagging**: Template-based tag generation with variables
 - **Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
 - **Smart Change Detection**: Builds when relevant files change (customizable watch patterns)
@@ -159,9 +159,10 @@ microservices/
 ├── worker/
 │   └── Dockerfile          # image: task-worker
 └── web/
-    └── Dockerfile.prod     # image: frontend
+    ├── Dockerfile.prod     # image: frontend
+    └── Dockerfile.dev      # image: frontend-dev
 ```
-**Result**: Three images with specified names
+**Result**: Four images with specified names (supports `Dockerfile.*` patterns)
 
 ### Custom Configuration
 ```
@@ -195,7 +196,7 @@ watch_files: []  # Empty = always build
 
 ## How It Works
 
-1. **Detection**: Scans repository for all Dockerfiles (skips `node_modules`, `.git`, etc.)
+1. **Detection**: Scans repository for all Dockerfiles - files named `Dockerfile` or `Dockerfile.*` (e.g., `Dockerfile.prod`, `Dockerfile.dev`) while skipping `node_modules`, `.git`, etc.
 2. **Naming**: Determines image names using priority rules
 3. **Change Check**: For branch pushes, only builds if Dockerfile was modified
 4. **Tag Generation**: Creates tags from templates with variable substitution
