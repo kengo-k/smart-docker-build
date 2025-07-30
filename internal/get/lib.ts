@@ -56,20 +56,18 @@ export interface GitHubContext {
 
 // Default configuration
 const DEFAULT_CONFIG: Config = {
-  imagetag_on_tag_pushed: ['{tag}', 'latest'],
-  imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}'],
+  imagetag_on_tag_pushed: ['{tag}'],
+  imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
 }
 
 // Configuration schemas
 const tagConfigSchema = z.union([z.literal(false), z.array(z.string())])
 
 const configSchema = z.object({
-  imagetag_on_tag_pushed: tagConfigSchema
-    .optional()
-    .default(['{tag}', 'latest']),
+  imagetag_on_tag_pushed: tagConfigSchema.optional().default(['{tag}']),
   imagetag_on_branch_pushed: tagConfigSchema
     .optional()
-    .default(['{branch}-{timestamp}-{sha}']),
+    .default(['{branch}-{timestamp}-{sha}', 'latest']),
 })
 
 // Load project configuration

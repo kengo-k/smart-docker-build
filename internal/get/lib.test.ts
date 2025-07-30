@@ -111,8 +111,8 @@ describe('loadProjectConfig', () => {
   test('should return default config when file does not exist', () => {
     const config = loadProjectConfig('/nonexistent')
     expect(config).toEqual({
-      imagetag_on_tag_pushed: ['{tag}', 'latest'],
-      imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}'],
+      imagetag_on_tag_pushed: ['{tag}'],
+      imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
     })
   })
 })
