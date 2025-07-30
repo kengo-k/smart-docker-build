@@ -150,6 +150,26 @@ describe('loadProjectConfig', () => {
     expect(config).toEqual({
       imagetag_on_tag_pushed: ['{tag}'],
       imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+      watch_files: [],
+    })
+  })
+
+  test('should load config with watch_files from project file', () => {
+    const configPath = join(testDir, 'smart-docker-build.yml')
+    writeFileSync(
+      configPath,
+      `
+imagetag_on_tag_pushed: ["{tag}"]
+imagetag_on_branch_pushed: ["{branch}-{sha}", "latest"]
+watch_files: ["package.json", "src/**/*"]
+`,
+    )
+
+    const config = loadProjectConfig(testDir)
+    expect(config).toEqual({
+      imagetag_on_tag_pushed: ['{tag}'],
+      imagetag_on_branch_pushed: ['{branch}-{sha}', 'latest'],
+      watch_files: ['package.json', 'src/**/*'],
     })
   })
 })

@@ -14,6 +14,7 @@ export type TagConfig = false | string[]
 export interface Config {
   imagetag_on_tag_pushed: TagConfig
   imagetag_on_branch_pushed: TagConfig
+  watch_files: string[]
 }
 
 export interface ImageSpec {
@@ -58,6 +59,7 @@ export interface GitHubContext {
 const DEFAULT_CONFIG: Config = {
   imagetag_on_tag_pushed: ['{tag}'],
   imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+  watch_files: [], // Empty by default - means always build
 }
 
 // Configuration schemas
@@ -68,6 +70,7 @@ const configSchema = z.object({
   imagetag_on_branch_pushed: tagConfigSchema
     .optional()
     .default(['{branch}-{timestamp}-{sha}', 'latest']),
+  watch_files: z.array(z.string()).optional().default([]),
 })
 
 // Load project configuration
@@ -380,7 +383,7 @@ export function shouldBuildForChanges(
   watchFiles: string[] | null,
   changedFiles: { filename: string }[],
 ): boolean {
-  // If no watch_files specified, always build (default behavior)
+  // If no watch_files specified or empty array, always build (default behavior)
   if (!watchFiles || watchFiles.length === 0) {
     return true
   }
@@ -627,10 +630,15 @@ export async function generateBuildArgs(
         })
       }
     } else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
-      // Branch push: check for changes using watch_files or default to always build
+      // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
+      const effectiveWatchFiles =
+        image.dockerfileConfig.watchFiles !== null
+          ? image.dockerfileConfig.watchFiles
+          : projectConfig.watch_files
+
       const hasChanges = shouldBuildForChanges(
         image.dockerfile,
-        image.dockerfileConfig.watchFiles,
+        effectiveWatchFiles,
         changedFiles,
       )
 
