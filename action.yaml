@@ -23,6 +23,9 @@ runs:
         npm run build
         node dist/index.js
       shell: bash
+      env:
+        INPUT_TOKEN: ${{ inputs.token }}      # ← ここで inputs.token を INPUT_TOKEN に変換
+        INPUT_TIMEZONE: ${{ inputs.timezone }} # ← ここで inputs.timezone を INPUT_TIMEZONE に変換
 
     - name: Login to ghcr
       uses: docker/login-action@v3
