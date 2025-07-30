@@ -12,7 +12,7 @@ A GitHub Action that **intelligently** builds and pushes Docker images with zero
 - **🧠 Smart Detection**: Automatically finds and processes all Dockerfiles
 - **🏷️ Flexible Tagging**: Template-based tag generation with variables
 - **⚙️ Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
-- **🔄 Change Detection**: Only builds when Dockerfiles are modified (configurable)
+- **🔄 Smart Change Detection**: Builds when relevant files change (customizable watch patterns)
 - **🛡️ Tag Protection**: Prevents accidental overwrite of existing image tags
 - **📦 GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
 
@@ -75,11 +75,12 @@ WORKDIR /app
 # image: my-devcontainer
 # imagetag_on_tag_pushed: false
 # imagetag_on_branch_pushed: ["v1.0"]
+# watch_files: ["Dockerfile", ".devcontainer/**/*"]
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 WORKDIR /workspace
 # ... rest of your Dockerfile
 ```
-**Result**: Creates `my-devcontainer:v1.0` on branch push only (no images created on tag push)
+**Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change
 
 ## 🏷️ Tag Template Variables
 
@@ -175,8 +176,9 @@ hybrid-app/
 
 When no configuration file exists:
 
-- **Branch pushes**: Build only when Dockerfile changes, tag as `{branch}-{timestamp}-{sha}` and `latest`
+- **Branch pushes**: Always build by default, tag as `{branch}-{timestamp}-{sha}` and `latest`
 - **Tag pushes**: Always build, tag as `{tag}`
+- **File watching**: Optional - specify `watch_files` in Dockerfile comments to build only when specific files change
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
 

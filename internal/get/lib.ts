@@ -133,6 +133,7 @@ export interface DockerfileConfig {
   imageName: string | null
   imagetagOnTagPushed: TagConfig | null
   imagetagOnBranchPushed: TagConfig | null
+  watchFiles: string[] | null
 }
 
 export function extractDockerfileConfig(
@@ -145,6 +146,7 @@ export function extractDockerfileConfig(
     imageName: null,
     imagetagOnTagPushed: null,
     imagetagOnBranchPushed: null,
+    watchFiles: null,
   }
 
   if (!existsSync(absolutePath)) {
@@ -204,6 +206,23 @@ export function extractDockerfileConfig(
             // If not valid JSON, treat as single string
             result.imagetagOnBranchPushed = [value]
           }
+        }
+        continue
+      }
+
+      // watch_files configuration
+      const watchFilesMatch = line.match(/^#\s*watch_files:\s*(.+)$/)
+      if (watchFilesMatch) {
+        const value = watchFilesMatch[1].trim()
+        try {
+          // Parse as JSON array
+          const parsed = JSON.parse(value)
+          if (Array.isArray(parsed)) {
+            result.watchFiles = parsed
+          }
+        } catch {
+          // If not valid JSON, treat as single string
+          result.watchFiles = [value]
         }
         continue
       }
@@ -308,16 +327,68 @@ export function parseGitRef(ref: string): GitRef {
   return { branch, tag }
 }
 
-export function shouldBuildForChanges(
-  argObj: { on_branch_changed?: boolean; path: string },
-  changedFiles: { filename: string }[],
-): boolean {
-  if (!argObj.on_branch_changed) {
-    return true // Always build if change checking is disabled
+// Simple glob pattern matching (basic implementation)
+function matchesPattern(filename: string, pattern: string): boolean {
+  // Very basic implementation for common patterns
+  if (pattern === filename) return true
+
+  // Handle simple * pattern (matches anything)
+  if (pattern === '*') return true
+
+  // Handle *.extension pattern (only at root level, no subdirectories)
+  if (pattern.startsWith('*.')) {
+    const extension = pattern.slice(2)
+    return filename.endsWith('.' + extension) && !filename.includes('/')
   }
 
-  const dockerfile = changedFiles.find((file) => file.filename === argObj.path)
-  return !!dockerfile
+  // Handle src/**/*.js pattern (recursive directory match with extension)
+  if (pattern.includes('**/*')) {
+    const parts = pattern.split('**/')
+    const prefix = parts[0] // e.g., "src/"
+    const suffix = parts[1] // e.g., "*.js"
+
+    if (!filename.startsWith(prefix)) return false
+
+    if (suffix === '*') return true
+
+    // Handle *.extension after **
+    if (suffix.startsWith('*.')) {
+      const extension = suffix.slice(2)
+      return filename.endsWith('.' + extension)
+    }
+
+    return filename.endsWith(suffix)
+  }
+
+  // Handle src/* pattern (single directory match)
+  if (pattern.includes('/*') && !pattern.includes('**')) {
+    const prefix = pattern.split('/*')[0] + '/'
+    const suffix = pattern.split('/*')[1]
+    const afterPrefix = filename.slice(prefix.length)
+    return (
+      filename.startsWith(prefix) &&
+      !afterPrefix.includes('/') &&
+      (suffix === '*' || afterPrefix.endsWith(suffix))
+    )
+  }
+
+  return filename === pattern
+}
+
+export function shouldBuildForChanges(
+  dockerfilePath: string,
+  watchFiles: string[] | null,
+  changedFiles: { filename: string }[],
+): boolean {
+  // If no watch_files specified, always build (default behavior)
+  if (!watchFiles || watchFiles.length === 0) {
+    return true
+  }
+
+  // Check if any changed file matches the watch patterns
+  return changedFiles.some((file) =>
+    watchFiles.some((pattern) => matchesPattern(file.filename, pattern)),
+  )
 }
 
 export function generateImageTag(
@@ -556,9 +627,11 @@ export async function generateBuildArgs(
         })
       }
     } else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
-      // Branch push: check for changes
-      const hasChanges = changedFiles.some(
-        (file) => file.filename === image.dockerfile,
+      // Branch push: check for changes using watch_files or default to always build
+      const hasChanges = shouldBuildForChanges(
+        image.dockerfile,
+        image.dockerfileConfig.watchFiles,
+        changedFiles,
       )
 
       if (hasChanges) {

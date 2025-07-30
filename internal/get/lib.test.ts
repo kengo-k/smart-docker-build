@@ -46,31 +46,66 @@ describe('parseGitRef', () => {
 })
 
 describe('shouldBuildForChanges', () => {
-  test('should return true when on_branch_changed is false', () => {
-    const argObj = { on_branch_changed: false, path: 'Dockerfile' }
-    const changedFiles: { filename: string }[] = []
-
-    expect(shouldBuildForChanges(argObj, changedFiles)).toBe(true)
-  })
-
-  test('should return true when Dockerfile is in changed files', () => {
-    const argObj = { on_branch_changed: true, path: 'Dockerfile' }
-    const changedFiles: { filename: string }[] = [
-      { filename: 'Dockerfile' },
-      { filename: 'src/app.js' },
-    ]
-
-    expect(shouldBuildForChanges(argObj, changedFiles)).toBe(true)
-  })
-
-  test('should return false when Dockerfile is not changed', () => {
-    const argObj = { on_branch_changed: true, path: 'Dockerfile' }
+  test('should return true when no watch_files specified (default behavior)', () => {
     const changedFiles: { filename: string }[] = [
       { filename: 'src/app.js' },
       { filename: 'README.md' },
     ]
 
-    expect(shouldBuildForChanges(argObj, changedFiles)).toBe(false)
+    expect(shouldBuildForChanges('Dockerfile', null, changedFiles)).toBe(true)
+    expect(shouldBuildForChanges('Dockerfile', [], changedFiles)).toBe(true)
+  })
+
+  test('should return true when changed file matches watch pattern', () => {
+    const watchFiles = ['Dockerfile', 'package.json', 'src/**/*']
+    const changedFiles: { filename: string }[] = [
+      { filename: 'src/app.js' },
+      { filename: 'README.md' },
+    ]
+
+    expect(shouldBuildForChanges('Dockerfile', watchFiles, changedFiles)).toBe(
+      true,
+    )
+  })
+
+  test('should return false when no changed files match watch patterns', () => {
+    const watchFiles = ['Dockerfile', 'package.json']
+    const changedFiles: { filename: string }[] = [
+      { filename: 'README.md' },
+      { filename: 'docs/guide.md' },
+    ]
+
+    expect(shouldBuildForChanges('Dockerfile', watchFiles, changedFiles)).toBe(
+      false,
+    )
+  })
+
+  test('should handle glob patterns correctly', () => {
+    const watchFiles = ['src/**/*.js', '*.json']
+
+    // Should match
+    expect(
+      shouldBuildForChanges('Dockerfile', watchFiles, [
+        { filename: 'src/components/App.js' },
+      ]),
+    ).toBe(true)
+    expect(
+      shouldBuildForChanges('Dockerfile', watchFiles, [
+        { filename: 'package.json' },
+      ]),
+    ).toBe(true)
+
+    // Should not match
+    expect(
+      shouldBuildForChanges('Dockerfile', watchFiles, [
+        { filename: 'src/styles.css' },
+      ]),
+    ).toBe(false)
+    expect(
+      shouldBuildForChanges('Dockerfile', watchFiles, [
+        { filename: 'docs/package.json' },
+      ]),
+    ).toBe(false)
   })
 })
 
@@ -133,6 +168,7 @@ describe('extractDockerfileConfig', () => {
       imageName: null,
       imagetagOnTagPushed: null,
       imagetagOnBranchPushed: null,
+      watchFiles: null,
     })
   })
 
@@ -149,6 +185,7 @@ WORKDIR /app`,
     expect(config.imageName).toBe('my-app')
     expect(config.imagetagOnTagPushed).toBeNull()
     expect(config.imagetagOnBranchPushed).toBeNull()
+    expect(config.watchFiles).toBeNull()
   })
 
   test('should extract image name (new format)', () => {
@@ -209,6 +246,37 @@ FROM node:18`,
     const config = extractDockerfileConfig(dockerfilePath)
     expect(config.imagetagOnTagPushed).toEqual(['production'])
     expect(config.imagetagOnBranchPushed).toEqual(['dev-latest'])
+  })
+
+  test('should extract watch_files configuration', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: my-devcontainer
+# imagetag_on_tag_pushed: false
+# imagetag_on_branch_pushed: ["v1.0"]
+# watch_files: ["Dockerfile", ".devcontainer/**/*"]
+FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.imageName).toBe('my-devcontainer')
+    expect(config.imagetagOnTagPushed).toBe(false)
+    expect(config.imagetagOnBranchPushed).toEqual(['v1.0'])
+    expect(config.watchFiles).toEqual(['Dockerfile', '.devcontainer/**/*'])
+  })
+
+  test('should handle single watch_files string', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: my-app
+# watch_files: Dockerfile
+FROM node:18`,
+    )
+
+    const config = extractDockerfileConfig(dockerfilePath)
+    expect(config.watchFiles).toEqual(['Dockerfile'])
   })
 })
 
