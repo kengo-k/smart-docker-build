@@ -163,9 +163,12 @@ export function extractDockerfileConfig(
     for (const line of lines.slice(0, 10)) {
       // Check first 10 lines
       // Support both "Image:" and "image:" (case insensitive)
+      console.log(`[DEBUG] Checking line: "${line}"`)
       const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
+      console.log(`[DEBUG] Image match result:`, imageMatch)
       if (imageMatch) {
         result.imageName = imageMatch[1].trim()
+        console.log(`[DEBUG] Extracted image name: "${result.imageName}"`)
         continue
       }
 
