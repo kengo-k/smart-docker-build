@@ -3,6 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 
 import {
+  checkImageTagExists,
   createTemplateVariables,
   extractDockerfileConfig,
   extractImageNameFromDockerfile,
@@ -11,6 +12,7 @@ import {
   loadProjectConfig,
   parseGitRef,
   shouldBuildForChanges,
+  validateTagsBeforeBuild,
   validateTemplateVariables,
 } from './lib.js'
 
@@ -291,5 +293,149 @@ describe('createTemplateVariables', () => {
     })
     expect(variables.branch).toBeUndefined()
     expect(variables.tag).toBeUndefined()
+  })
+})
+
+describe('checkImageTagExists', () => {
+  test('should return false when API call fails', async () => {
+    const mockOctokit = {
+      request: async () => {
+        throw new Error('API Error')
+      },
+    } as any
+
+    const exists = await checkImageTagExists(
+      mockOctokit,
+      'owner',
+      'my-app',
+      'v1.0',
+    )
+    expect(exists).toBe(false)
+  })
+
+  test('should return true when tag exists', async () => {
+    const mockOctokit = {
+      request: async () => ({
+        data: [
+          {
+            metadata: {
+              container: {
+                tags: ['v1.0', 'latest'],
+              },
+            },
+          },
+        ],
+      }),
+    } as any
+
+    const exists = await checkImageTagExists(
+      mockOctokit,
+      'owner',
+      'my-app',
+      'v1.0',
+    )
+    expect(exists).toBe(true)
+  })
+
+  test('should return false when tag does not exist', async () => {
+    const mockOctokit = {
+      request: async () => ({
+        data: [
+          {
+            metadata: {
+              container: {
+                tags: ['v2.0', 'latest'],
+              },
+            },
+          },
+        ],
+      }),
+    } as any
+
+    const exists = await checkImageTagExists(
+      mockOctokit,
+      'owner',
+      'my-app',
+      'v1.0',
+    )
+    expect(exists).toBe(false)
+  })
+})
+
+describe('validateTagsBeforeBuild', () => {
+  test('should not throw when no tags exist', async () => {
+    const mockOctokit = {
+      request: async () => {
+        throw new Error('Package not found')
+      },
+    } as any
+
+    const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
+
+    await expect(
+      validateTagsBeforeBuild(
+        ['{tag}', 'latest'],
+        templateVariables,
+        mockOctokit,
+        'owner',
+        'my-app',
+      ),
+    ).resolves.not.toThrow()
+  })
+
+  test('should throw when tag already exists', async () => {
+    const mockOctokit = {
+      request: async () => ({
+        data: [
+          {
+            metadata: {
+              container: {
+                tags: ['v1.0', 'latest'],
+              },
+            },
+          },
+        ],
+      }),
+    } as any
+
+    const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
+
+    await expect(
+      validateTagsBeforeBuild(
+        ['{tag}'],
+        templateVariables,
+        mockOctokit,
+        'owner',
+        'my-app',
+      ),
+    ).rejects.toThrow("❌ Image tag 'my-app:v1.0' already exists in registry")
+  })
+
+  test('should validate all generated tags', async () => {
+    const mockOctokit = {
+      request: async () => ({
+        data: [
+          {
+            metadata: {
+              container: {
+                tags: ['latest'], // Only latest exists
+              },
+            },
+          },
+        ],
+      }),
+    } as any
+
+    const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
+
+    await expect(
+      validateTagsBeforeBuild(
+        ['{tag}', 'latest'], // v1.0 doesn't exist, but latest does
+        templateVariables,
+        mockOctokit,
+        'owner',
+        'my-app',
+      ),
+    ).rejects.toThrow("❌ Image tag 'my-app:latest' already exists in registry")
   })
 })

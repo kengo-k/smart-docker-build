@@ -13,6 +13,7 @@ A GitHub Action that **intelligently** builds and pushes Docker images with zero
 - **🏷️ Flexible Tagging**: Template-based tag generation with variables
 - **⚙️ Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
 - **🔄 Change Detection**: Only builds when Dockerfiles are modified (configurable)
+- **🛡️ Tag Protection**: Prevents accidental overwrite of existing image tags
 - **📦 GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
 
 ## 🎯 Quick Start

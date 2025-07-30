@@ -236,6 +236,63 @@ export async function getRepositoryChanges(
   })
 }
 
+// Check if image tag exists in GitHub Container Registry
+export async function checkImageTagExists(
+  octokit: Octokit,
+  owner: string,
+  imageName: string,
+  tag: string,
+): Promise<boolean> {
+  try {
+    // GitHub Container Registry API
+    // Extract the package name from the full image name (e.g., "owner/my-app" -> "my-app")
+    const packageName = imageName.includes('/')
+      ? imageName.split('/').pop()
+      : imageName
+
+    const response = await octokit.request(
+      'GET /user/packages/container/{package_name}/versions',
+      {
+        package_name: packageName,
+      },
+    )
+
+    // Check if any version has the specified tag
+    return response.data.some((version: any) =>
+      version.metadata?.container?.tags?.includes(tag),
+    )
+  } catch (error) {
+    // If we can't access the registry or package doesn't exist, assume tag doesn't exist
+    return false
+  }
+}
+
+// Validate that image tags don't already exist in registry
+export async function validateTagsBeforeBuild(
+  tags: string[],
+  templateVariables: TemplateVariables,
+  octokit: Octokit,
+  owner: string,
+  imageName: string,
+): Promise<void> {
+  // Generate final tags from templates
+  const finalTags = generateTagsFromTemplates(tags, templateVariables)
+
+  // Check each tag for existence
+  for (const tag of finalTags) {
+    const exists = await checkImageTagExists(octokit, owner, imageName, tag)
+    if (exists) {
+      throw new Error(
+        `❌ Image tag '${imageName}:${tag}' already exists in registry\n` +
+          `💡 Solutions:\n` +
+          `   - Update tag in Dockerfile comment\n` +
+          `   - Use unique variables like {timestamp} or {sha}\n` +
+          `   - Consider using force_overwrite flag if intentional overwrite is needed`,
+      )
+    }
+  }
+}
+
 export function parseGitRef(ref: string): GitRef {
   let branch: string | null = null
   let tag: string | null = null
@@ -477,7 +534,15 @@ export async function generateBuildArgs(
 
     // Check build conditions
     if (tag && Array.isArray(effectiveTagPushedConfig)) {
-      // Tag push: always build if config is array
+      // Tag push: validate tags don't exist, then build
+      await validateTagsBeforeBuild(
+        effectiveTagPushedConfig,
+        templateVariables,
+        octokit,
+        repository.owner.login,
+        image.name,
+      )
+
       const tags = generateTagsFromTemplates(
         effectiveTagPushedConfig,
         templateVariables,
@@ -497,6 +562,15 @@ export async function generateBuildArgs(
       )
 
       if (hasChanges) {
+        // Validate tags don't exist, then build
+        await validateTagsBeforeBuild(
+          effectiveBranchPushedConfig,
+          templateVariables,
+          octokit,
+          repository.owner.login,
+          image.name,
+        )
+
         const tags = generateTagsFromTemplates(
           effectiveBranchPushedConfig,
           templateVariables,
