@@ -68,15 +68,17 @@ FROM node:18
 WORKDIR /app
 # ... rest of your Dockerfile
 ```
+**Result**: Creates `my-api-server:v1.0.0` and `my-api-server:latest` on tag push, `my-api-server:main-202501291430-abc1234` on branch push
 
 ```dockerfile
-# image: dev-tools
+# image: my-devcontainer
 # imagetag_on_tag_pushed: false
-# imagetag_on_branch_pushed: ["dev-v1.0"]
-FROM alpine:3.18
-WORKDIR /app
+# imagetag_on_branch_pushed: ["v1.0"]
+FROM mcr.microsoft.com/devcontainers/base:ubuntu
+WORKDIR /workspace
 # ... rest of your Dockerfile
 ```
+**Result**: Creates `my-devcontainer:v1.0` on branch push only (no images created on tag push)
 
 ## 🏷️ Tag Template Variables
 
@@ -162,8 +164,8 @@ hybrid-app/
 ├── smart-docker-build.yml  # Project-wide tag strategy
 ├── main/
 │   └── Dockerfile          # image: main-app
-└── tools/
-    └── Dockerfile          # image: build-tools
+└── devcontainer/
+    └── Dockerfile          # image: my-devcontainer
                             # imagetag_on_tag_pushed: false
 ```
 ✅ **Result**: Custom tags + specified names
