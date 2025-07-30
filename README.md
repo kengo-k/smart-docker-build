@@ -177,11 +177,19 @@ hybrid-app/
 
 ## 🚀 Default Behavior
 
-When no configuration file exists:
+When no `smart-docker-build.yml` configuration file exists, the action uses these default settings:
 
-- **Branch pushes**: Always build by default, tag as `{branch}-{timestamp}-{sha}` and `latest`
+```yaml
+# Default configuration (equivalent to no config file)
+imagetag_on_tag_pushed: ["{tag}"]
+imagetag_on_branch_pushed: ["{branch}-{timestamp}-{sha}", "latest"]
+watch_files: []  # Empty = always build
+```
+
+**Behavior**:
+- **Branch pushes**: Always build, tag as `{branch}-{timestamp}-{sha}` and `latest`
 - **Tag pushes**: Always build, tag as `{tag}`
-- **File watching**: Optional - specify `watch_files` in Dockerfile comments to build only when specific files change
+- **File watching**: Always build (empty `watch_files` means no file filtering)
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
 
