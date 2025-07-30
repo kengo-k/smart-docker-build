@@ -6,17 +6,17 @@
 
 A GitHub Action that **intelligently** builds and pushes Docker images with zero configuration required. Automatically detects Dockerfiles, generates smart image names, and creates flexible tags using customizable templates.
 
-## 🚀 Key Features
+## Key Features
 
-- **🔍 Zero Configuration**: Works out-of-the-box for single Dockerfile projects
-- **🧠 Smart Detection**: Automatically finds and processes all Dockerfiles
-- **🏷️ Flexible Tagging**: Template-based tag generation with variables
-- **⚙️ Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
-- **🔄 Smart Change Detection**: Builds when relevant files change (customizable watch patterns)
-- **🛡️ Tag Protection**: Prevents accidental overwrite of existing image tags
-- **📦 GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
+- **Zero Configuration**: Works out-of-the-box for single Dockerfile projects
+- **Smart Detection**: Automatically finds and processes all Dockerfiles
+- **Flexible Tagging**: Template-based tag generation with variables
+- **Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
+- **Smart Change Detection**: Builds when relevant files change (customizable watch patterns)
+- **Tag Protection**: Prevents accidental overwrite of existing image tags
+- **GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Simple Project (Zero Configuration)
 
@@ -40,12 +40,12 @@ jobs:
 ```
 
 **That's it!** The action will:
-- 🔍 Detect your `Dockerfile` automatically
-- 🏷️ Use repository name as image name
-- 📦 Build and push to `ghcr.io/username/repo-name`
-- 🏷️ Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
+- Detect your `Dockerfile` automatically
+- Use repository name as image name
+- Build and push to `ghcr.io/username/repo-name`
+- Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
 
-## 📋 Configuration Methods
+## Configuration Methods
 
 There are only **2 simple ways** to configure this action:
 
@@ -85,7 +85,7 @@ WORKDIR /workspace
 ```
 **Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change
 
-## 🏷️ Tag Template Variables
+## Tag Template Variables
 
 Customize your image tags using these variables:
 
@@ -105,7 +105,7 @@ imagetag_on_branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
 imagetag_on_branch_pushed: ["{branch}-{timestamp}", "latest"]  # → main-202501291430, latest
 ```
 
-## ⚙️ Action Parameters
+## Action Parameters
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
@@ -121,7 +121,7 @@ imagetag_on_branch_pushed: ["{branch}-{timestamp}", "latest"]  # → main-202501
     timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
 ```
 
-## 🔍 Image Name Detection
+## Image Name Detection
 
 The action determines image names using this priority order:
 
@@ -136,20 +136,20 @@ The action determines image names using this priority order:
 
 3. **Error** (multiple Dockerfiles without names)
    ```
-   ❌ Multiple Dockerfiles found but no image name specified for worker/Dockerfile
-   💡 Solutions:
+   Multiple Dockerfiles found but no image name specified for worker/Dockerfile
+   Solutions:
       - Add comment: # image: my-worker
       - Create smart-docker-build.yml with explicit image configurations
    ```
 
-## 📁 Project Structure Examples
+## Project Structure Examples
 
 ### Single Service
 ```
 my-app/
 └── Dockerfile
 ```
-✅ **Result**: Image name `my-app` (automatic)
+**Result**: Image name `my-app` (automatic)
 
 ### Multi-Service
 ```
@@ -161,7 +161,7 @@ microservices/
 └── web/
     └── Dockerfile.prod     # image: frontend
 ```
-✅ **Result**: Three images with specified names
+**Result**: Three images with specified names
 
 ### Custom Configuration
 ```
@@ -173,9 +173,9 @@ hybrid-app/
     └── Dockerfile          # image: my-devcontainer
                             # imagetag_on_tag_pushed: false
 ```
-✅ **Result**: Custom tags + specified names
+**Result**: Custom tags + specified names
 
-## 🚀 Default Behavior
+## Default Behavior
 
 When no `smart-docker-build.yml` configuration file exists, the action uses these default settings:
 
@@ -193,7 +193,7 @@ watch_files: []  # Empty = always build
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
 
-## 🔄 How It Works
+## How It Works
 
 1. **Detection**: Scans repository for all Dockerfiles (skips `node_modules`, `.git`, etc.)
 2. **Naming**: Determines image names using priority rules
@@ -201,7 +201,7 @@ watch_files: []  # Empty = always build
 4. **Tag Generation**: Creates tags from templates with variable substitution
 5. **Build & Push**: Uses Docker to build and push to GHCR
 
-## 🛠️ Advanced Examples
+## Advanced Examples
 
 ### Release-Only Builds
 ```yaml
@@ -230,14 +230,10 @@ imagetag_on_tag_pushed: ["{tag}", "production"]
 watch_files: ["package.json", "src/**/*", "Dockerfile*"]
 ```
 
-## 🤝 Contributing
+## Contributing
 
 Issues and pull requests are welcome! Please see our [contributing guidelines](CONTRIBUTING.md).
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
-
----
-
-**Made with ❤️ for the GitHub Actions community**
