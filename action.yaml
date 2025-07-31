@@ -38,6 +38,7 @@ runs:
         INPUT_CACHE_TYPE: ${{ inputs.cache_type }}
 
     - name: Login to ghcr
+      if: steps.js_action.outputs.has_builds == 'true'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -45,9 +46,11 @@ runs:
         password: ${{ inputs.token }}
 
     - name: Checkout latest commit
+      if: steps.js_action.outputs.has_builds == 'true'
       uses: actions/checkout@v4
 
     - name: 'Build and Push Docker Images'
+      if: steps.js_action.outputs.has_builds == 'true'
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'

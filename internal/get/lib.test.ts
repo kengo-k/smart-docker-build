@@ -176,14 +176,14 @@ watch_files: ["package.json", "src/**/*"]
 
 describe('extractImageNameFromDockerfile', () => {
   test('should return null for non-existent file', () => {
-    const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile')
+    const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile', '/tmp')
     expect(name).toBeNull()
   })
 })
 
 describe('extractDockerfileConfig', () => {
   test('should return null values for non-existent file', () => {
-    const config = extractDockerfileConfig('/nonexistent/Dockerfile')
+    const config = extractDockerfileConfig('/nonexistent/Dockerfile', '/tmp')
     expect(config).toEqual({
       imageName: null,
       imagetagOnTagPushed: null,
@@ -201,7 +201,7 @@ FROM node:18
 WORKDIR /app`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-app')
     expect(config.imagetagOnTagPushed).toBeNull()
     expect(config.imagetagOnBranchPushed).toBeNull()
@@ -217,7 +217,7 @@ FROM node:18
 WORKDIR /app`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-app')
   })
 
@@ -232,7 +232,7 @@ FROM alpine:3.18
 WORKDIR /app`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('dev-tools')
     expect(config.imagetagOnTagPushed).toBe(false)
     expect(config.imagetagOnBranchPushed).toEqual(['dev-v1.0'])
@@ -248,7 +248,7 @@ WORKDIR /app`,
 FROM node:18`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imagetagOnTagPushed).toEqual(['{tag}', 'latest', 'stable'])
     expect(config.imagetagOnBranchPushed).toEqual(['{branch}-{sha}'])
   })
@@ -263,7 +263,7 @@ FROM node:18`,
 FROM node:18`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imagetagOnTagPushed).toEqual(['production'])
     expect(config.imagetagOnBranchPushed).toEqual(['dev-latest'])
   })
@@ -279,7 +279,7 @@ FROM node:18`,
 FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-devcontainer')
     expect(config.imagetagOnTagPushed).toBe(false)
     expect(config.imagetagOnBranchPushed).toEqual(['v1.0'])
@@ -295,7 +295,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
 FROM node:18`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath)
+    const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.watchFiles).toEqual(['Dockerfile'])
   })
 })
