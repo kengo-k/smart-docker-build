@@ -307,8 +307,12 @@ export async function validateTagsBeforeBuild(
   // Generate final tags from templates
   const finalTags = generateTagsFromTemplates(tags, templateVariables)
 
-  // Check each tag for existence
+  // Check each tag for existence (skip 'latest' as it's meant to be overwritten)
   for (const tag of finalTags) {
+    if (tag === 'latest') {
+      continue // Allow overwriting 'latest' tag
+    }
+
     const exists = await checkImageTagExists(octokit, owner, imageName, tag)
     if (exists) {
       throw new Error(
