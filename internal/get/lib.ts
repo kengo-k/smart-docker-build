@@ -145,9 +145,6 @@ export function extractDockerfileConfig(
 ): DockerfileConfig {
   const absolutePath = resolve(workingDir, dockerfilePath)
 
-  console.log(`[DEBUG] Working directory: ${workingDir}`)
-  console.log(`[DEBUG] Dockerfile path: ${dockerfilePath}`)
-  console.log(`[DEBUG] Absolute path: ${absolutePath}`)
 
   const result: DockerfileConfig = {
     imageName: null,
@@ -167,12 +164,9 @@ export function extractDockerfileConfig(
     for (const line of lines.slice(0, 10)) {
       // Check first 10 lines
       // Support both "Image:" and "image:" (case insensitive)
-      console.log(`[DEBUG] Checking line: "${line}"`)
       const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
-      console.log(`[DEBUG] Image match result:`, imageMatch)
       if (imageMatch) {
         result.imageName = imageMatch[1].trim()
-        console.log(`[DEBUG] Extracted image name: "${result.imageName}"`)
         continue
       }
 
@@ -633,13 +627,7 @@ export async function generateBuildArgs(
         templateVariables,
       )
 
-      console.log(`[DEBUG] Generated tags for branch push:`, tags)
       for (const tagName of tags) {
-        console.log(`[DEBUG] Adding build arg:`, {
-          path: image.dockerfile,
-          name: image.name,
-          tag: tagName,
-        })
         outputs.push({
           path: image.dockerfile,
           name: image.name,
@@ -674,13 +662,7 @@ export async function generateBuildArgs(
           templateVariables,
         )
 
-        console.log(`[DEBUG] Generated tags for branch push:`, tags)
         for (const tagName of tags) {
-          console.log(`[DEBUG] Adding build arg:`, {
-            path: image.dockerfile,
-            name: image.name,
-            tag: tagName,
-          })
           outputs.push({
             path: image.dockerfile,
             name: image.name,
@@ -691,7 +673,6 @@ export async function generateBuildArgs(
     }
   }
 
-  console.log(`[DEBUG] Final outputs array:`, outputs)
   return {
     buildArgs: outputs,
     validationErrors: [],

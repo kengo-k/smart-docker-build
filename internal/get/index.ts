@@ -1,5 +1,4 @@
 import {
-  debug,
   getInput,
   info,
   setFailed,
@@ -38,15 +37,6 @@ async function main(): Promise<void> {
     } else {
       info(`✅ Successfully generated ${buildArgs.length} build configurations`)
 
-      // Log cache configuration
-      if (cacheEnabled === 'true') {
-        info(`🚀 Cache enabled: ${cacheType} - Build acceleration active`)
-      } else {
-        info(`📦 Cache disabled - Using standard Docker build`)
-      }
-
-      // Log results for debugging (only shown when ACTIONS_STEP_DEBUG=true)
-      debug(`Build arguments: ${JSON.stringify(buildArgs, null, 2)}`)
     }
 
     setOutput('build_args', JSON.stringify(buildArgs))
