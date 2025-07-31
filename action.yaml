@@ -46,7 +46,7 @@ runs:
         success_count=0
         failure_count=0
 
-        echo "$build_args" | jq -c '.[]' | while read -r element; do
+        while IFS= read -r element; do
           path=$(echo "$element" | jq -r '.path')
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')
@@ -75,7 +75,7 @@ runs:
           fi
 
           echo "---"
-        done
+        done < <(echo "$build_args" | jq -c '.[]')
 
         echo "📊 Build Summary:"
         echo "   ✅ Successful: $success_count"
