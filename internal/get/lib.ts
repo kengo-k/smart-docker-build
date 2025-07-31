@@ -145,7 +145,6 @@ export function extractDockerfileConfig(
 ): DockerfileConfig {
   const absolutePath = resolve(workingDir, dockerfilePath)
 
-
   const result: DockerfileConfig = {
     imageName: null,
     imagetagOnTagPushed: null,

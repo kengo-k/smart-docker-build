@@ -1,10 +1,4 @@
-import {
-  getInput,
-  info,
-  setFailed,
-  setOutput,
-  warning,
-} from '@actions/core'
+import { getInput, info, setFailed, setOutput, warning } from '@actions/core'
 import github from '@actions/github'
 
 import { generateBuildArgs } from './lib.js'
@@ -36,7 +30,6 @@ async function main(): Promise<void> {
       info('ℹ️ No images to build based on current configuration and changes')
     } else {
       info(`✅ Successfully generated ${buildArgs.length} build configurations`)
-
     }
 
     setOutput('build_args', JSON.stringify(buildArgs))

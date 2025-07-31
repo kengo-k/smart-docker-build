@@ -506,7 +506,7 @@ describe('validateTagsBeforeBuild', () => {
           {
             metadata: {
               container: {
-                tags: ['latest'], // Only latest exists
+                tags: ['v1.0', 'latest'], // Both v1.0 and latest exist
               },
             },
           },
@@ -516,14 +516,15 @@ describe('validateTagsBeforeBuild', () => {
 
     const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
 
+    // Should throw for v1.0 (not latest, since latest is allowed to be overwritten)
     await expect(
       validateTagsBeforeBuild(
-        ['{tag}', 'latest'], // v1.0 doesn't exist, but latest does
+        ['{tag}', 'latest'], // v1.0 exists and should cause error, latest is allowed
         templateVariables,
         mockOctokit,
         'owner',
         'my-app',
       ),
-    ).rejects.toThrow("❌ Image tag 'my-app:latest' already exists in registry")
+    ).rejects.toThrow("❌ Image tag 'my-app:v1.0' already exists in registry")
   })
 })
