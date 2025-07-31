@@ -1,8 +1,8 @@
 import { format } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { existsSync, readFileSync, readdirSync } from 'fs'
-import { load } from 'js-yaml'
-import { resolve } from 'path'
+import * as fs from 'fs'
+import * as yaml from 'js-yaml'
+import * as path from 'path'
 import { z } from 'zod'
 
 import { Octokit } from '@octokit/rest'
@@ -263,12 +263,12 @@ export async function generateBuildArgs(
 
 // Load project configuration
 export function loadProjectConfig(workingDir: string): Config {
-  const configPath = resolve(workingDir, 'smart-docker-build.yml')
+  const configPath = path.resolve(workingDir, 'smart-docker-build.yml')
 
-  if (existsSync(configPath)) {
+  if (fs.existsSync(configPath)) {
     try {
-      const configContent = readFileSync(configPath, 'utf8')
-      const rawConfig = load(configContent)
+      const configContent = fs.readFileSync(configPath, 'utf8')
+      const rawConfig = yaml.load(configContent)
       return configSchema.parse(rawConfig)
     } catch (error) {
       throw new Error(
@@ -285,10 +285,10 @@ export function findDockerfiles(workingDir: string): string[] {
   const dockerfiles: string[] = []
 
   function searchDir(dir: string): void {
-    const entries = readdirSync(dir, { withFileTypes: true })
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
 
     for (const entry of entries) {
-      const fullPath = resolve(dir, entry.name)
+      const fullPath = path.resolve(dir, entry.name)
 
       if (entry.isDirectory()) {
         // Skip common directories we don't want to search
@@ -319,7 +319,7 @@ export function extractDockerfileConfig(
   dockerfilePath: string,
   workingDir: string,
 ): DockerfileConfig {
-  const absolutePath = resolve(workingDir, dockerfilePath)
+  const absolutePath = path.resolve(workingDir, dockerfilePath)
 
   const result: DockerfileConfig = {
     imageName: null,
@@ -328,12 +328,12 @@ export function extractDockerfileConfig(
     watchFiles: null,
   }
 
-  if (!existsSync(absolutePath)) {
+  if (!fs.existsSync(absolutePath)) {
     return result
   }
 
   try {
-    const content = readFileSync(absolutePath, 'utf8')
+    const content = fs.readFileSync(absolutePath, 'utf8')
     const lines = content.split('\n')
 
     for (const line of lines.slice(0, 10)) {
