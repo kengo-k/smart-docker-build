@@ -90,13 +90,13 @@ export async function generateBuildArgs(
 
   // Validate template variables in tag configuration
   const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
-  if (Array.isArray(projectConfig.imagetag_on_tag_pushed)) {
+  if (projectConfig.imagetag_on_tag_pushed !== false) {
     validateTemplateVariables(
       projectConfig.imagetag_on_tag_pushed,
       availableVariables,
     )
   }
-  if (Array.isArray(projectConfig.imagetag_on_branch_pushed)) {
+  if (projectConfig.imagetag_on_branch_pushed !== false) {
     validateTemplateVariables(
       projectConfig.imagetag_on_branch_pushed,
       availableVariables,
@@ -188,7 +188,7 @@ export async function generateBuildArgs(
         : projectConfig.imagetag_on_branch_pushed
 
     // Check build conditions
-    if (tag && Array.isArray(effectiveTagPushedConfig)) {
+    if (tag && effectiveTagPushedConfig !== false) {
       // Tag push: validate tags don't exist, then build
       await validateTagsBeforeBuild(
         effectiveTagPushedConfig,
@@ -210,7 +210,7 @@ export async function generateBuildArgs(
           tag: tagName,
         })
       }
-    } else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
+    } else if (branch && effectiveBranchPushedConfig !== false) {
       // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
       const effectiveWatchFiles =
         image.dockerfileConfig.watchFiles !== null
@@ -279,31 +279,27 @@ export async function findDockerfiles(workingDir: string): Promise<string[]> {
   const dockerfiles: string[] = []
 
   async function searchDir(dir: string): Promise<void> {
-    try {
-      const entries = await readdir(dir, { withFileTypes: true })
+    const entries = await readdir(dir, { withFileTypes: true })
 
-      for (const entry of entries) {
-        const fullPath = resolve(dir, entry.name)
+    for (const entry of entries) {
+      const fullPath = resolve(dir, entry.name)
 
-        if (entry.isDirectory()) {
-          // Skip common directories we don't want to search
-          if (
-            !['node_modules', '.git', '.github', 'dist', 'build'].includes(
-              entry.name,
-            )
-          ) {
-            await searchDir(fullPath)
-          }
-        } else if (
-          entry.name === 'Dockerfile' ||
-          entry.name.startsWith('Dockerfile.')
+      if (entry.isDirectory()) {
+        // Skip common directories we don't want to search
+        if (
+          !['node_modules', '.git', '.github', 'dist', 'build'].includes(
+            entry.name,
+          )
         ) {
-          const relativePath = fullPath.replace(workingDir + '/', '')
-          dockerfiles.push(relativePath)
+          await searchDir(fullPath)
         }
+      } else if (
+        entry.name === 'Dockerfile' ||
+        entry.name.startsWith('Dockerfile.')
+      ) {
+        const relativePath = fullPath.replace(workingDir + '/', '')
+        dockerfiles.push(relativePath)
       }
-    } catch (error) {
-      // Ignore directories we can't read
     }
   }
 
