@@ -27,7 +27,7 @@ async function main(): Promise<void> {
     return
   }
 
-  info(`✅ Successfully generated ${buildArgs.length} build configurations`)
+  info(`✅ Found ${buildArgs.length} build targets`)
   setOutput('build_args', JSON.stringify(buildArgs))
   setOutput('has_builds', 'true')
 }
