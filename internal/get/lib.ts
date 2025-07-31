@@ -575,35 +575,6 @@ export function shouldBuildForChanges(
   )
 }
 
-export function generateImageTag(
-  argObj: {
-    include_branch_name?: boolean
-    include_timestamp?: boolean
-    include_commit_sha?: boolean
-  },
-  branch: string | null,
-  timezone: string,
-  after: string,
-): string {
-  const imageTags: string[] = []
-
-  if (argObj.include_branch_name && branch) {
-    imageTags.push(branch)
-  }
-
-  if (argObj.include_timestamp) {
-    const now = new Date()
-    const formattedDate = format(toZonedTime(now, timezone), 'yyyyMMddHHmm')
-    imageTags.push(formattedDate)
-  }
-
-  if (argObj.include_commit_sha) {
-    imageTags.push(after)
-  }
-
-  return imageTags.join('-')
-}
-
 // Validate template variables exist
 export function validateTemplateVariables(
   templates: string[],

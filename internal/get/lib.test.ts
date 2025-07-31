@@ -7,7 +7,6 @@ import {
   createTemplateVariables,
   extractDockerfileConfig,
   extractImageNameFromDockerfile,
-  generateImageTag,
   generateTagsFromTemplates,
   loadProjectConfig,
   parseGitRef,
@@ -109,41 +108,6 @@ describe('shouldBuildForChanges', () => {
   })
 })
 
-describe('generateImageTag', () => {
-  test('should generate tag with all components', () => {
-    const argObj = {
-      include_branch_name: true,
-      include_timestamp: true,
-      include_commit_sha: true,
-    }
-
-    const result = generateImageTag(argObj, 'main', 'UTC', 'abc123')
-    expect(result).toMatch(/main-\d{12}-abc123/)
-  })
-
-  test('should generate tag with only branch name', () => {
-    const argObj = {
-      include_branch_name: true,
-      include_timestamp: false,
-      include_commit_sha: false,
-    }
-
-    const result = generateImageTag(argObj, 'develop', 'UTC', 'def456')
-    expect(result).toBe('develop')
-  })
-
-  test('should generate empty tag when no components selected', () => {
-    const argObj = {
-      include_branch_name: false,
-      include_timestamp: false,
-      include_commit_sha: false,
-    }
-
-    const result = generateImageTag(argObj, 'main', 'UTC', 'abc123')
-    expect(result).toBe('')
-  })
-})
-
 describe('loadProjectConfig', () => {
   test('should return default config when file does not exist', () => {
     const config = loadProjectConfig('/nonexistent')
@@ -176,7 +140,10 @@ watch_files: ["package.json", "src/**/*"]
 
 describe('extractImageNameFromDockerfile', () => {
   test('should return null for non-existent file', () => {
-    const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile', '/tmp')
+    const name = extractImageNameFromDockerfile(
+      '/nonexistent/Dockerfile',
+      '/tmp',
+    )
     expect(name).toBeNull()
   })
 })
