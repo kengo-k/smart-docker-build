@@ -78,10 +78,10 @@ runs:
             echo "📤 Starting Docker push..."
             if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
               echo "✅ Successfully pushed ghcr.io/${{ github.actor }}/$name:$tag"
-              ((success_count++))
+              success_count=$((success_count + 1))
             else
               echo "❌ Failed to push ghcr.io/${{ github.actor }}/$name:$tag"
-              ((failure_count++))
+              failure_count=$((failure_count + 1))
             fi
           else
             echo "❌ Failed to build ghcr.io/${{ github.actor }}/$name:$tag from $path"
