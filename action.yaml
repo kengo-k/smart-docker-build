@@ -53,11 +53,15 @@ runs:
         success_count=0
         failure_count=0
         
-        # Process build arguments in array format to avoid subshell issues
-        elements=$(echo "$build_args" | jq -c '.[]')
+        # Get array length
+        length=$(echo "$build_args" | jq '. | length')
+        echo "📊 Total items to process: $length"
         
-        while IFS= read -r element; do
-          echo "🔄 Processing element: $element"
+        # Process each element by index to avoid subshell issues
+        for ((i=0; i<length; i++)); do
+          element=$(echo "$build_args" | jq -c ".[$i]")
+          echo "🔄 Processing element $((i+1))/$length: $element"
+          
           path=$(echo "$element" | jq -r '.path')
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')
@@ -87,11 +91,10 @@ runs:
             echo "   - Build context in $(dirname $path)"
             ((failure_count++))
           fi
-
-          echo "🔄 Completed processing for $name:$tag"
-
+          
+          echo "🔄 Completed processing for $name:$tag (item $((i+1))/$length)"
           echo "---"
-        done <<< "$elements"
+        done
 
         echo "📊 Build Summary:"
         echo "   ✅ Successful: $success_count"
