@@ -21,8 +21,115 @@ const configSchema = z.object({
         .default(['{branch}-{timestamp}-{sha}', 'latest']),
     watch_files: z.array(z.string()).optional().default([]),
 });
+// Generate build arguments with smart detection
+export async function generateBuildArgs(token, timezone, githubContext, workingDir) {
+    // Validate token
+    if (!token || token.trim() === '') {
+        throw new Error('❌ Token is required but not provided');
+    }
+    // Load configuration from project file only
+    const projectConfig = loadProjectConfig(workingDir);
+    // Validate template variables in tag configuration
+    const availableVariables = ['tag', 'branch', 'sha', 'timestamp'];
+    if (Array.isArray(projectConfig.imagetag_on_tag_pushed)) {
+        validateTemplateVariables(projectConfig.imagetag_on_tag_pushed, availableVariables);
+    }
+    if (Array.isArray(projectConfig.imagetag_on_branch_pushed)) {
+        validateTemplateVariables(projectConfig.imagetag_on_branch_pushed, availableVariables);
+    }
+    // Get repository information
+    const octokit = new Octokit({ auth: token });
+    const { repository, after, ref } = githubContext.payload;
+    if (!repository || !after || !ref) {
+        throw new Error('❌ Missing required GitHub context information (repository, after, ref)');
+    }
+    const { branch, tag } = parseGitRef(ref);
+    // Get repository changes for change detection
+    const compare = await getRepositoryChanges(octokit, repository, after);
+    const changedFiles = compare.data.files || [];
+    // Auto-detect Dockerfiles and determine images to build
+    const dockerfiles = await findDockerfiles(workingDir);
+    if (dockerfiles.length === 0) {
+        throw new Error('❌ No Dockerfiles found in the repository');
+    }
+    const imagesToProcess = [];
+    if (dockerfiles.length === 1) {
+        // Single Dockerfile: check for image name comment first
+        const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir);
+        imagesToProcess.push({
+            dockerfile: dockerfiles[0],
+            name: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
+            dockerfileConfig,
+        });
+    }
+    else {
+        // Multiple Dockerfiles: require image names
+        for (const dockerfilePath of dockerfiles) {
+            const dockerfileConfig = extractDockerfileConfig(dockerfilePath, workingDir);
+            if (!dockerfileConfig.imageName) {
+                throw new Error(`❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
+                    `💡 Solutions:\n` +
+                    `   - Add comment: # image: my-image-name\n` +
+                    `   - Create smart-docker-build.yml with explicit image configurations`);
+            }
+            imagesToProcess.push({
+                dockerfile: dockerfilePath,
+                name: dockerfileConfig.imageName,
+                dockerfileConfig,
+            });
+        }
+    }
+    // Generate build arguments based on git event
+    const outputs = [];
+    const templateVariables = createTemplateVariables(branch, tag, timezone, after);
+    for (const image of imagesToProcess) {
+        // Get effective configuration (Dockerfile config overrides project config)
+        const effectiveTagPushedConfig = image.dockerfileConfig.imagetagOnTagPushed !== null
+            ? image.dockerfileConfig.imagetagOnTagPushed
+            : projectConfig.imagetag_on_tag_pushed;
+        const effectiveBranchPushedConfig = image.dockerfileConfig.imagetagOnBranchPushed !== null
+            ? image.dockerfileConfig.imagetagOnBranchPushed
+            : projectConfig.imagetag_on_branch_pushed;
+        // Check build conditions
+        if (tag && Array.isArray(effectiveTagPushedConfig)) {
+            // Tag push: validate tags don't exist, then build
+            await validateTagsBeforeBuild(effectiveTagPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
+            const tags = generateTagsFromTemplates(effectiveTagPushedConfig, templateVariables);
+            for (const tagName of tags) {
+                outputs.push({
+                    path: image.dockerfile,
+                    name: image.name,
+                    tag: tagName,
+                });
+            }
+        }
+        else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
+            // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
+            const effectiveWatchFiles = image.dockerfileConfig.watchFiles !== null
+                ? image.dockerfileConfig.watchFiles
+                : projectConfig.watch_files;
+            const hasChanges = shouldBuildForChanges(image.dockerfile, effectiveWatchFiles, changedFiles);
+            if (hasChanges) {
+                // Validate tags don't exist, then build
+                await validateTagsBeforeBuild(effectiveBranchPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
+                const tags = generateTagsFromTemplates(effectiveBranchPushedConfig, templateVariables);
+                for (const tagName of tags) {
+                    outputs.push({
+                        path: image.dockerfile,
+                        name: image.name,
+                        tag: tagName,
+                    });
+                }
+            }
+        }
+    }
+    return {
+        buildArgs: outputs,
+        validationErrors: [],
+    };
+}
 // Load project configuration
-export function loadProjectConfig(workingDir = process.cwd()) {
+export function loadProjectConfig(workingDir) {
     const configPath = resolve(workingDir, 'smart-docker-build.yml');
     if (existsSync(configPath)) {
         try {
@@ -37,7 +144,7 @@ export function loadProjectConfig(workingDir = process.cwd()) {
     return DEFAULT_CONFIG;
 }
 // Find all Dockerfiles in the project
-export async function findDockerfiles(workingDir = process.cwd()) {
+export async function findDockerfiles(workingDir) {
     const dockerfiles = [];
     async function searchDir(dir) {
         try {
@@ -64,7 +171,7 @@ export async function findDockerfiles(workingDir = process.cwd()) {
     await searchDir(workingDir);
     return dockerfiles;
 }
-export function extractDockerfileConfig(dockerfilePath, workingDir = process.cwd()) {
+export function extractDockerfileConfig(dockerfilePath, workingDir) {
     const absolutePath = resolve(workingDir, dockerfilePath);
     const result = {
         imageName: null,
@@ -155,7 +262,7 @@ export function extractDockerfileConfig(dockerfilePath, workingDir = process.cwd
     return result;
 }
 // Legacy function for backward compatibility
-export function extractImageNameFromDockerfile(dockerfilePath, workingDir = process.cwd()) {
+export function extractImageNameFromDockerfile(dockerfilePath, workingDir) {
     return extractDockerfileConfig(dockerfilePath, workingDir).imageName;
 }
 export async function getRepositoryChanges(octokit, repository, after) {
@@ -327,111 +434,4 @@ export function createTemplateVariables(branch, tag, timezone, sha) {
         variables.timestamp = format(toZonedTime(now, timezone), 'yyyyMMddHHmm');
     }
     return variables;
-}
-// Generate build arguments with smart detection
-export async function generateBuildArgs(token, timezone, githubContext, workingDir = process.cwd()) {
-    // Validate token
-    if (!token || token.trim() === '') {
-        throw new Error('❌ Token is required but not provided');
-    }
-    // Load configuration from project file only
-    const projectConfig = loadProjectConfig(workingDir);
-    // Validate template variables in tag configuration
-    const availableVariables = ['tag', 'branch', 'sha', 'timestamp'];
-    if (Array.isArray(projectConfig.imagetag_on_tag_pushed)) {
-        validateTemplateVariables(projectConfig.imagetag_on_tag_pushed, availableVariables);
-    }
-    if (Array.isArray(projectConfig.imagetag_on_branch_pushed)) {
-        validateTemplateVariables(projectConfig.imagetag_on_branch_pushed, availableVariables);
-    }
-    // Get repository information
-    const octokit = new Octokit({ auth: token });
-    const { repository, after, ref } = githubContext.payload;
-    if (!repository || !after || !ref) {
-        throw new Error('❌ Missing required GitHub context information (repository, after, ref)');
-    }
-    const { branch, tag } = parseGitRef(ref);
-    // Get repository changes for change detection
-    const compare = await getRepositoryChanges(octokit, repository, after);
-    const changedFiles = compare.data.files || [];
-    // Auto-detect Dockerfiles and determine images to build
-    const dockerfiles = await findDockerfiles(workingDir);
-    if (dockerfiles.length === 0) {
-        throw new Error('❌ No Dockerfiles found in the repository');
-    }
-    const imagesToProcess = [];
-    if (dockerfiles.length === 1) {
-        // Single Dockerfile: check for image name comment first
-        const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir);
-        imagesToProcess.push({
-            dockerfile: dockerfiles[0],
-            name: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
-            dockerfileConfig,
-        });
-    }
-    else {
-        // Multiple Dockerfiles: require image names
-        for (const dockerfilePath of dockerfiles) {
-            const dockerfileConfig = extractDockerfileConfig(dockerfilePath, workingDir);
-            if (!dockerfileConfig.imageName) {
-                throw new Error(`❌ Multiple Dockerfiles found but no image name specified for ${dockerfilePath}\n` +
-                    `💡 Solutions:\n` +
-                    `   - Add comment: # image: my-image-name\n` +
-                    `   - Create smart-docker-build.yml with explicit image configurations`);
-            }
-            imagesToProcess.push({
-                dockerfile: dockerfilePath,
-                name: dockerfileConfig.imageName,
-                dockerfileConfig,
-            });
-        }
-    }
-    // Generate build arguments based on git event
-    const outputs = [];
-    const templateVariables = createTemplateVariables(branch, tag, timezone, after);
-    for (const image of imagesToProcess) {
-        // Get effective configuration (Dockerfile config overrides project config)
-        const effectiveTagPushedConfig = image.dockerfileConfig.imagetagOnTagPushed !== null
-            ? image.dockerfileConfig.imagetagOnTagPushed
-            : projectConfig.imagetag_on_tag_pushed;
-        const effectiveBranchPushedConfig = image.dockerfileConfig.imagetagOnBranchPushed !== null
-            ? image.dockerfileConfig.imagetagOnBranchPushed
-            : projectConfig.imagetag_on_branch_pushed;
-        // Check build conditions
-        if (tag && Array.isArray(effectiveTagPushedConfig)) {
-            // Tag push: validate tags don't exist, then build
-            await validateTagsBeforeBuild(effectiveTagPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
-            const tags = generateTagsFromTemplates(effectiveTagPushedConfig, templateVariables);
-            for (const tagName of tags) {
-                outputs.push({
-                    path: image.dockerfile,
-                    name: image.name,
-                    tag: tagName,
-                });
-            }
-        }
-        else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
-            // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
-            const effectiveWatchFiles = image.dockerfileConfig.watchFiles !== null
-                ? image.dockerfileConfig.watchFiles
-                : projectConfig.watch_files;
-            const hasChanges = shouldBuildForChanges(image.dockerfile, effectiveWatchFiles, changedFiles);
-            if (hasChanges) {
-                // Validate tags don't exist, then build
-                await validateTagsBeforeBuild(effectiveBranchPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
-                const tags = generateTagsFromTemplates(effectiveBranchPushedConfig, templateVariables);
-                for (const tagName of tags) {
-                    outputs.push({
-                        path: image.dockerfile,
-                        name: image.name,
-                        tag: tagName,
-                    });
-                }
-            }
-        }
-    }
-    return {
-        buildArgs: outputs,
-        validationErrors: [],
-    };
 }

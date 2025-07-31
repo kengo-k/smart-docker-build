@@ -37,16 +37,17 @@ export interface GitHubContext {
         ref?: string;
     };
 }
-export declare function loadProjectConfig(workingDir?: string): Config;
-export declare function findDockerfiles(workingDir?: string): Promise<string[]>;
+export declare function generateBuildArgs(token: string, timezone: string, githubContext: GitHubContext, workingDir: string): Promise<GenerateBuildArgsResult>;
+export declare function loadProjectConfig(workingDir: string): Config;
+export declare function findDockerfiles(workingDir: string): Promise<string[]>;
 export interface DockerfileConfig {
     imageName: string | null;
     imagetagOnTagPushed: TagConfig | null;
     imagetagOnBranchPushed: TagConfig | null;
     watchFiles: string[] | null;
 }
-export declare function extractDockerfileConfig(dockerfilePath: string, workingDir?: string): DockerfileConfig;
-export declare function extractImageNameFromDockerfile(dockerfilePath: string, workingDir?: string): string | null;
+export declare function extractDockerfileConfig(dockerfilePath: string, workingDir: string): DockerfileConfig;
+export declare function extractImageNameFromDockerfile(dockerfilePath: string, workingDir: string): string | null;
 export declare function getRepositoryChanges(octokit: Octokit, repository: {
     owner: {
         login: string;
@@ -81,4 +82,3 @@ export declare function generateImageTag(argObj: {
 export declare function validateTemplateVariables(templates: string[], availableVariables: string[]): void;
 export declare function generateTagsFromTemplates(templates: string[], variables: TemplateVariables): string[];
 export declare function createTemplateVariables(branch: string | null, tag: string | null, timezone: string, sha: string): TemplateVariables;
-export declare function generateBuildArgs(token: string, timezone: string, githubContext: GitHubContext, workingDir?: string): Promise<GenerateBuildArgsResult>;

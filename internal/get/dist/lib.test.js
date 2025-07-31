@@ -123,13 +123,13 @@ watch_files: ["package.json", "src/**/*"]
 });
 describe('extractImageNameFromDockerfile', () => {
     test('should return null for non-existent file', () => {
-        const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile');
+        const name = extractImageNameFromDockerfile('/nonexistent/Dockerfile', '/tmp');
         expect(name).toBeNull();
     });
 });
 describe('extractDockerfileConfig', () => {
     test('should return null values for non-existent file', () => {
-        const config = extractDockerfileConfig('/nonexistent/Dockerfile');
+        const config = extractDockerfileConfig('/nonexistent/Dockerfile', '/tmp');
         expect(config).toEqual({
             imageName: null,
             imagetagOnTagPushed: null,
@@ -142,7 +142,7 @@ describe('extractDockerfileConfig', () => {
         writeFileSync(dockerfilePath, `# Image: my-app
 FROM node:18
 WORKDIR /app`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imageName).toBe('my-app');
         expect(config.imagetagOnTagPushed).toBeNull();
         expect(config.imagetagOnBranchPushed).toBeNull();
@@ -153,7 +153,7 @@ WORKDIR /app`);
         writeFileSync(dockerfilePath, `# image: my-app
 FROM node:18
 WORKDIR /app`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imageName).toBe('my-app');
     });
     test('should extract tag configuration', () => {
@@ -163,7 +163,7 @@ WORKDIR /app`);
 # imagetag_on_branch_pushed: ["dev-v1.0"]
 FROM alpine:3.18
 WORKDIR /app`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imageName).toBe('dev-tools');
         expect(config.imagetagOnTagPushed).toBe(false);
         expect(config.imagetagOnBranchPushed).toEqual(['dev-v1.0']);
@@ -174,7 +174,7 @@ WORKDIR /app`);
 # imagetag_on_tag_pushed: ["{tag}", "latest", "stable"]
 # imagetag_on_branch_pushed: ["{branch}-{sha}"]
 FROM node:18`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imagetagOnTagPushed).toEqual(['{tag}', 'latest', 'stable']);
         expect(config.imagetagOnBranchPushed).toEqual(['{branch}-{sha}']);
     });
@@ -184,7 +184,7 @@ FROM node:18`);
 # imagetag_on_tag_pushed: production
 # imagetag_on_branch_pushed: dev-latest
 FROM node:18`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imagetagOnTagPushed).toEqual(['production']);
         expect(config.imagetagOnBranchPushed).toEqual(['dev-latest']);
     });
@@ -195,7 +195,7 @@ FROM node:18`);
 # imagetag_on_branch_pushed: ["v1.0"]
 # watch_files: ["Dockerfile", ".devcontainer/**/*"]
 FROM mcr.microsoft.com/devcontainers/base:ubuntu`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.imageName).toBe('my-devcontainer');
         expect(config.imagetagOnTagPushed).toBe(false);
         expect(config.imagetagOnBranchPushed).toEqual(['v1.0']);
@@ -206,7 +206,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu`);
         writeFileSync(dockerfilePath, `# image: my-app
 # watch_files: Dockerfile
 FROM node:18`);
-        const config = extractDockerfileConfig(dockerfilePath);
+        const config = extractDockerfileConfig(dockerfilePath, testDir);
         expect(config.watchFiles).toEqual(['Dockerfile']);
     });
 });
@@ -352,7 +352,7 @@ describe('validateTagsBeforeBuild', () => {
                     {
                         metadata: {
                             container: {
-                                tags: ['latest'], // Only latest exists
+                                tags: ['v1.0', 'latest'], // Both v1.0 and latest exist
                             },
                         },
                     },
@@ -360,7 +360,8 @@ describe('validateTagsBeforeBuild', () => {
             }),
         };
         const templateVariables = { tag: 'v1.0', sha: 'abc1234' };
-        await expect(validateTagsBeforeBuild(['{tag}', 'latest'], // v1.0 doesn't exist, but latest does
-        templateVariables, mockOctokit, 'owner', 'my-app')).rejects.toThrow("❌ Image tag 'my-app:latest' already exists in registry");
+        // Should throw for v1.0 (not latest, since latest is allowed to be overwritten)
+        await expect(validateTagsBeforeBuild(['{tag}', 'latest'], // v1.0 exists and should cause error, latest is allowed
+        templateVariables, mockOctokit, 'owner', 'my-app')).rejects.toThrow("❌ Image tag 'my-app:v1.0' already exists in registry");
     });
 });
