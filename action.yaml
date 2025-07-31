@@ -63,10 +63,12 @@ runs:
           echo "🔍 Extracted values: path=$path, name=$name, tag=$tag"
 
           # Build the Docker image
+          echo "🏗️ Starting Docker build..."
           if docker build -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path); then
             echo "✅ Successfully built ghcr.io/${{ github.actor }}/$name:$tag"
 
             # Push the Docker image
+            echo "📤 Starting Docker push..."
             if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
               echo "✅ Successfully pushed ghcr.io/${{ github.actor }}/$name:$tag"
               ((success_count++))
@@ -82,6 +84,8 @@ runs:
             echo "   - Build context in $(dirname $path)"
             ((failure_count++))
           fi
+
+          echo "🔄 Completed processing for $name:$tag"
 
           echo "---"
         done < <(echo "$build_args" | jq -c '.[]')
