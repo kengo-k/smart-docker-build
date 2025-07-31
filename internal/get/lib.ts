@@ -55,6 +55,17 @@ export interface GitHubContext {
   }
 }
 
+export interface DockerfileConfig {
+  imageName: string | null
+  imagetagOnTagPushed: TagConfig | null
+  imagetagOnBranchPushed: TagConfig | null
+  watchFiles: string[] | null
+}
+
+interface ImageToProcess extends ImageSpec {
+  dockerfileConfig: DockerfileConfig
+}
+
 // Default configuration
 const DEFAULT_CONFIG: Config = {
   imagetag_on_tag_pushed: ['{tag}'],
@@ -124,10 +135,6 @@ export async function generateBuildArgs(
 
   if (dockerfiles.length === 0) {
     throw new Error('❌ No Dockerfiles found in the repository')
-  }
-
-  interface ImageToProcess extends ImageSpec {
-    dockerfileConfig: DockerfileConfig
   }
 
   const imagesToProcess: ImageToProcess[] = []
@@ -308,12 +315,6 @@ export async function findDockerfiles(workingDir: string): Promise<string[]> {
 }
 
 // Extract image configuration from Dockerfile comments
-export interface DockerfileConfig {
-  imageName: string | null
-  imagetagOnTagPushed: TagConfig | null
-  imagetagOnBranchPushed: TagConfig | null
-  watchFiles: string[] | null
-}
 
 export function extractDockerfileConfig(
   dockerfilePath: string,
