@@ -15,6 +15,8 @@ async function main(): Promise<void> {
 
   const token = getInput('token')
   const timezone = getInput('timezone')
+  const cacheEnabled = getInput('cache_enabled')
+  const cacheType = getInput('cache_type')
 
   try {
     const { buildArgs, validationErrors } = await generateBuildArgs(
@@ -35,6 +37,13 @@ async function main(): Promise<void> {
       info('ℹ️ No images to build based on current configuration and changes')
     } else {
       info(`✅ Successfully generated ${buildArgs.length} build configurations`)
+
+      // Log cache configuration
+      if (cacheEnabled === 'true') {
+        info(`🚀 Cache enabled: ${cacheType} - Build acceleration active`)
+      } else {
+        info(`📦 Cache disabled - Using standard Docker build`)
+      }
 
       // Log results for debugging (only shown when ACTIONS_STEP_DEBUG=true)
       debug(`Build arguments: ${JSON.stringify(buildArgs, null, 2)}`)

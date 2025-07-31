@@ -12,9 +12,21 @@ inputs:
     description: 'Timezone for generating timestamps in image tags (e.g., "UTC", "Asia/Tokyo", "America/New_York")'
     required: false
     default: 'UTC'
+  cache_enabled:
+    description: 'Enable Docker build cache for faster builds'
+    required: false
+    default: 'true'
+  cache_type:
+    description: 'Cache type: "gha" (GitHub Actions Cache) or "disabled"'
+    required: false
+    default: 'gha'
 runs:
   using: 'composite'
   steps:
+    - name: 'Set up Docker Buildx'
+      uses: docker/setup-buildx-action@v3
+      if: inputs.cache_enabled == 'true'
+
     - name: 'Get docker build args'
       id: js_action
       run: |
@@ -26,6 +38,8 @@ runs:
       env:
         INPUT_TOKEN: ${{ inputs.token }}      # ← ここで inputs.token を INPUT_TOKEN に変換
         INPUT_TIMEZONE: ${{ inputs.timezone }} # ← ここで inputs.timezone を INPUT_TIMEZONE に変換
+        INPUT_CACHE_ENABLED: ${{ inputs.cache_enabled }}
+        INPUT_CACHE_TYPE: ${{ inputs.cache_type }}
 
     - name: Login to ghcr
       uses: docker/login-action@v3
@@ -52,16 +66,16 @@ runs:
 
         success_count=0
         failure_count=0
-        
+
         # Get array length
         length=$(echo "$build_args" | jq '. | length')
         echo "📊 Total items to process: $length"
-        
+
         # Process each element by index to avoid subshell issues
         for ((i=0; i<length; i++)); do
           element=$(echo "$build_args" | jq -c ".[$i]")
           echo "🔄 Processing element $((i+1))/$length: $element"
-          
+
           path=$(echo "$element" | jq -r '.path')
           name=$(echo "$element" | jq -r '.name')
           tag=$(echo "$element" | jq -r '.tag')
@@ -69,9 +83,23 @@ runs:
           echo "📦 Building image: $name:$tag from $path"
           echo "🔍 Extracted values: path=$path, name=$name, tag=$tag"
 
-          # Build the Docker image
+          # Build the Docker image with cache support
           echo "🏗️ Starting Docker build..."
-          if docker build -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path); then
+
+          # Determine build command and cache options
+          if [ "${{ inputs.cache_enabled }}" = "true" ] && [ "${{ inputs.cache_type }}" = "gha" ]; then
+            echo "🚀 Using GitHub Actions Cache for build acceleration"
+            cache_from="--cache-from type=gha"
+            cache_to="--cache-to type=gha,mode=max"
+            build_cmd="docker buildx build --load"
+          else
+            echo "📦 Using standard Docker build (no cache)"
+            cache_from=""
+            cache_to=""
+            build_cmd="docker build"
+          fi
+
+          if eval "$build_cmd $cache_from $cache_to -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path)"; then
             echo "✅ Successfully built ghcr.io/${{ github.actor }}/$name:$tag"
 
             # Push the Docker image
@@ -91,7 +119,7 @@ runs:
             echo "   - Build context in $(dirname $path)"
             ((failure_count++))
           fi
-          
+
           echo "🔄 Completed processing for $name:$tag (item $((i+1))/$length)"
           echo "---"
         done
