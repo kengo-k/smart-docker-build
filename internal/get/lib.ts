@@ -1,7 +1,6 @@
 import { format } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
-import { existsSync, readFileSync } from 'fs'
-import { readdir } from 'fs/promises'
+import { existsSync, readFileSync, readdirSync } from 'fs'
 import { load } from 'js-yaml'
 import { resolve } from 'path'
 import { z } from 'zod'
@@ -131,7 +130,7 @@ export async function generateBuildArgs(
   const changedFiles = compare.data.files || []
 
   // Auto-detect Dockerfiles and determine images to build
-  const dockerfiles = await findDockerfiles(workingDir)
+  const dockerfiles = findDockerfiles(workingDir)
 
   if (dockerfiles.length === 0) {
     throw new Error('❌ No Dockerfiles found in the repository')
@@ -282,11 +281,11 @@ export function loadProjectConfig(workingDir: string): Config {
 }
 
 // Find all Dockerfiles in the project
-export async function findDockerfiles(workingDir: string): Promise<string[]> {
+export function findDockerfiles(workingDir: string): string[] {
   const dockerfiles: string[] = []
 
-  async function searchDir(dir: string): Promise<void> {
-    const entries = await readdir(dir, { withFileTypes: true })
+  function searchDir(dir: string): void {
+    const entries = readdirSync(dir, { withFileTypes: true })
 
     for (const entry of entries) {
       const fullPath = resolve(dir, entry.name)
@@ -298,7 +297,7 @@ export async function findDockerfiles(workingDir: string): Promise<string[]> {
             entry.name,
           )
         ) {
-          await searchDir(fullPath)
+          searchDir(fullPath)
         }
       } else if (
         entry.name === 'Dockerfile' ||
@@ -310,7 +309,7 @@ export async function findDockerfiles(workingDir: string): Promise<string[]> {
     }
   }
 
-  await searchDir(workingDir)
+  searchDir(workingDir)
   return dockerfiles
 }
 
