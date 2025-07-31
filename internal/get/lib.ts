@@ -144,7 +144,7 @@ export function extractDockerfileConfig(
   workingDir: string = process.cwd(),
 ): DockerfileConfig {
   const absolutePath = resolve(workingDir, dockerfilePath)
-  
+
   console.log(`[DEBUG] Working directory: ${workingDir}`)
   console.log(`[DEBUG] Dockerfile path: ${dockerfilePath}`)
   console.log(`[DEBUG] Absolute path: ${absolutePath}`)
@@ -629,7 +629,13 @@ export async function generateBuildArgs(
         templateVariables,
       )
 
+      console.log(`[DEBUG] Generated tags for branch push:`, tags)
       for (const tagName of tags) {
+        console.log(`[DEBUG] Adding build arg:`, {
+          path: image.dockerfile,
+          name: image.name,
+          tag: tagName,
+        })
         outputs.push({
           path: image.dockerfile,
           name: image.name,
@@ -664,7 +670,13 @@ export async function generateBuildArgs(
           templateVariables,
         )
 
+        console.log(`[DEBUG] Generated tags for branch push:`, tags)
         for (const tagName of tags) {
+          console.log(`[DEBUG] Adding build arg:`, {
+            path: image.dockerfile,
+            name: image.name,
+            tag: tagName,
+          })
           outputs.push({
             path: image.dockerfile,
             name: image.name,
@@ -675,6 +687,7 @@ export async function generateBuildArgs(
     }
   }
 
+  console.log(`[DEBUG] Final outputs array:`, outputs)
   return {
     buildArgs: outputs,
     validationErrors: [],
