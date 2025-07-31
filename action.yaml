@@ -52,7 +52,10 @@ runs:
 
         success_count=0
         failure_count=0
-
+        
+        # Process build arguments in array format to avoid subshell issues
+        elements=$(echo "$build_args" | jq -c '.[]')
+        
         while IFS= read -r element; do
           echo "🔄 Processing element: $element"
           path=$(echo "$element" | jq -r '.path')
@@ -88,7 +91,7 @@ runs:
           echo "🔄 Completed processing for $name:$tag"
 
           echo "---"
-        done < <(echo "$build_args" | jq -c '.[]')
+        done <<< "$elements"
 
         echo "📊 Build Summary:"
         echo "   ✅ Successful: $success_count"
