@@ -9,40 +9,40 @@ import { z } from 'zod'
 import { Octokit } from '@octokit/rest'
 
 // Types
-export type TagConfig = false | string[]
+type TagConfig = false | string[]
 
-export interface Config {
+interface Config {
   imagetag_on_tag_pushed: TagConfig
   imagetag_on_branch_pushed: TagConfig
   watch_files: string[]
 }
 
-export interface ImageSpec {
+interface ImageSpec {
   dockerfile: string
   name: string
 }
 
-export interface BuildArg {
+interface BuildArg {
   path: string
   name: string
   tag: string
 }
 
-export interface GenerateBuildArgsResult {
+interface GenerateBuildArgsResult {
   buildArgs: BuildArg[]
   validationErrors: string[]
 }
 
-export interface TemplateVariables {
+interface TemplateVariables {
   [key: string]: string
 }
 
-export interface GitRef {
+interface GitRef {
   branch: string | null
   tag: string | null
 }
 
-export interface GitHubContext {
+interface GitHubContext {
   payload: {
     repository?: {
       name: string
@@ -55,7 +55,7 @@ export interface GitHubContext {
   }
 }
 
-export interface DockerfileConfig {
+interface DockerfileConfig {
   imageName: string | null
   imagetagOnTagPushed: TagConfig | null
   imagetagOnBranchPushed: TagConfig | null
