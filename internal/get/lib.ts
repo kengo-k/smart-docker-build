@@ -7,13 +7,19 @@ import { z } from 'zod'
 
 import { Octokit } from '@octokit/rest'
 
-// Types
-type TagConfig = false | string[]
+// Project-wide configuration from smart-docker-build.yml file
+interface ProjectConfig {
+  imageTagsOnTagPushed: string[] | null
+  imageTagsOnBranchPushed: string[] | null
+  watchFiles: string[]
+}
 
-interface Config {
-  imagetag_on_tag_pushed: TagConfig
-  imagetag_on_branch_pushed: TagConfig
-  watch_files: string[]
+// Configuration specified in Dockerfile comment area, used to override project-wide settings
+interface DockerfileConfig {
+  imageName: string | null
+  imageTagsOnTagPushed: string[] | null
+  imageTagsOnBranchPushed: string[] | null
+  watchFiles: string[] | null
 }
 
 interface ImageSpec {
@@ -54,33 +60,26 @@ interface GitHubContext {
   }
 }
 
-interface DockerfileConfig {
-  imageName: string | null
-  imagetagOnTagPushed: TagConfig | null
-  imagetagOnBranchPushed: TagConfig | null
-  watchFiles: string[] | null
-}
-
 interface ImageToProcess extends ImageSpec {
   dockerfileConfig: DockerfileConfig
 }
 
 // Default configuration
-const DEFAULT_CONFIG: Config = {
-  imagetag_on_tag_pushed: ['{tag}'],
-  imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
-  watch_files: [], // Empty by default - means always build
+const DEFAULT_CONFIG: ProjectConfig = {
+  imageTagsOnTagPushed: ['{tag}'],
+  imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+  watchFiles: [], // Empty by default - means always build
 }
 
 // Configuration schemas
-const tagConfigSchema = z.union([z.literal(false), z.array(z.string())])
+const tagConfigSchema = z.union([z.literal(null), z.array(z.string())])
 
 const configSchema = z.object({
-  imagetag_on_tag_pushed: tagConfigSchema.optional().default(['{tag}']),
-  imagetag_on_branch_pushed: tagConfigSchema
+  imageTagsOnTagPushed: tagConfigSchema.optional().default(['{tag}']),
+  imageTagsOnBranchPushed: tagConfigSchema
     .optional()
     .default(['{branch}-{timestamp}-{sha}', 'latest']),
-  watch_files: z.array(z.string()).optional().default([]),
+  watchFiles: z.array(z.string()).optional().default([]),
 })
 
 // Generate build arguments with smart detection
@@ -100,15 +99,15 @@ export async function generateBuildArgs(
 
   // Validate template variables in tag configuration
   const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
-  if (projectConfig.imagetag_on_tag_pushed !== false) {
+  if (projectConfig.imageTagsOnTagPushed !== null) {
     validateTemplateVariables(
-      projectConfig.imagetag_on_tag_pushed,
+      projectConfig.imageTagsOnTagPushed,
       availableVariables,
     )
   }
-  if (projectConfig.imagetag_on_branch_pushed !== false) {
+  if (projectConfig.imageTagsOnBranchPushed !== null) {
     validateTemplateVariables(
-      projectConfig.imagetag_on_branch_pushed,
+      projectConfig.imageTagsOnBranchPushed,
       availableVariables,
     )
   }
@@ -184,17 +183,17 @@ export async function generateBuildArgs(
   for (const image of imagesToProcess) {
     // Get effective configuration (Dockerfile config overrides project config)
     const effectiveTagPushedConfig =
-      image.dockerfileConfig.imagetagOnTagPushed !== null
-        ? image.dockerfileConfig.imagetagOnTagPushed
-        : projectConfig.imagetag_on_tag_pushed
+      image.dockerfileConfig.imageTagsOnTagPushed !== null
+        ? image.dockerfileConfig.imageTagsOnTagPushed
+        : projectConfig.imageTagsOnTagPushed
 
     const effectiveBranchPushedConfig =
-      image.dockerfileConfig.imagetagOnBranchPushed !== null
-        ? image.dockerfileConfig.imagetagOnBranchPushed
-        : projectConfig.imagetag_on_branch_pushed
+      image.dockerfileConfig.imageTagsOnBranchPushed !== null
+        ? image.dockerfileConfig.imageTagsOnBranchPushed
+        : projectConfig.imageTagsOnBranchPushed
 
     // Check build conditions
-    if (tag && effectiveTagPushedConfig !== false) {
+    if (tag && effectiveTagPushedConfig !== null) {
       // Tag push: validate tags don't exist, then build
       await validateTagsBeforeBuild(
         effectiveTagPushedConfig,
@@ -216,12 +215,12 @@ export async function generateBuildArgs(
           tag: tagName,
         })
       }
-    } else if (branch && effectiveBranchPushedConfig !== false) {
-      // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
+    } else if (branch && effectiveBranchPushedConfig !== null) {
+      // Branch push: check for changes using watchFiles (Dockerfile config overrides project config)
       const effectiveWatchFiles =
         image.dockerfileConfig.watchFiles !== null
           ? image.dockerfileConfig.watchFiles
-          : projectConfig.watch_files
+          : projectConfig.watchFiles
 
       const hasChanges = shouldBuildForChanges(
         image.dockerfile,
@@ -262,7 +261,7 @@ export async function generateBuildArgs(
 }
 
 // Load project configuration
-export function loadProjectConfig(workingDir: string): Config {
+export function loadProjectConfig(workingDir: string): ProjectConfig {
   const configPath = path.resolve(workingDir, 'smart-docker-build.yml')
 
   if (fs.existsSync(configPath)) {
@@ -323,8 +322,8 @@ export function extractDockerfileConfig(
 
   const result: DockerfileConfig = {
     imageName: null,
-    imagetagOnTagPushed: null,
-    imagetagOnBranchPushed: null,
+    imageTagsOnTagPushed: null,
+    imageTagsOnBranchPushed: null,
     watchFiles: null,
   }
 
@@ -345,52 +344,52 @@ export function extractDockerfileConfig(
         continue
       }
 
-      // imagetag_on_tag_pushed configuration
-      const tagPushedMatch = line.match(/^#\s*imagetag_on_tag_pushed:\s*(.+)$/)
+      // imageTagsOnTagPushed configuration
+      const tagPushedMatch = line.match(/^#\s*imageTagsOnTagPushed:\s*(.+)$/)
       if (tagPushedMatch) {
         const value = tagPushedMatch[1].trim()
-        if (value === 'false') {
-          result.imagetagOnTagPushed = false
+        if (value === 'null') {
+          result.imageTagsOnTagPushed = null
         } else {
           try {
             // Parse as JSON array
             const parsed = JSON.parse(value)
             if (Array.isArray(parsed)) {
-              result.imagetagOnTagPushed = parsed
+              result.imageTagsOnTagPushed = parsed
             }
           } catch {
             // If not valid JSON, treat as single string
-            result.imagetagOnTagPushed = [value]
+            result.imageTagsOnTagPushed = [value]
           }
         }
         continue
       }
 
-      // imagetag_on_branch_pushed configuration
+      // imageTagsOnBranchPushed configuration
       const branchPushedMatch = line.match(
-        /^#\s*imagetag_on_branch_pushed:\s*(.+)$/,
+        /^#\s*imageTagsOnBranchPushed:\s*(.+)$/,
       )
       if (branchPushedMatch) {
         const value = branchPushedMatch[1].trim()
-        if (value === 'false') {
-          result.imagetagOnBranchPushed = false
+        if (value === 'null') {
+          result.imageTagsOnBranchPushed = null
         } else {
           try {
             // Parse as JSON array
             const parsed = JSON.parse(value)
             if (Array.isArray(parsed)) {
-              result.imagetagOnBranchPushed = parsed
+              result.imageTagsOnBranchPushed = parsed
             }
           } catch {
             // If not valid JSON, treat as single string
-            result.imagetagOnBranchPushed = [value]
+            result.imageTagsOnBranchPushed = [value]
           }
         }
         continue
       }
 
-      // watch_files configuration
-      const watchFilesMatch = line.match(/^#\s*watch_files:\s*(.+)$/)
+      // watchFiles configuration
+      const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/)
       if (watchFilesMatch) {
         const value = watchFilesMatch[1].trim()
         try {
@@ -563,7 +562,7 @@ export function shouldBuildForChanges(
   watchFiles: string[] | null,
   changedFiles: { filename: string }[],
 ): boolean {
-  // If no watch_files specified or empty array, always build (default behavior)
+  // If no watchFiles specified or empty array, always build (default behavior)
   if (!watchFiles || watchFiles.length === 0) {
     return true
   }

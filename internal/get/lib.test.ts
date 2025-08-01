@@ -45,7 +45,7 @@ describe('parseGitRef', () => {
 })
 
 describe('shouldBuildForChanges', () => {
-  test('should return true when no watch_files specified (default behavior)', () => {
+  test('should return true when no watchFiles specified (default behavior)', () => {
     const changedFiles: { filename: string }[] = [
       { filename: 'src/app.js' },
       { filename: 'README.md' },
@@ -112,28 +112,28 @@ describe('loadProjectConfig', () => {
   test('should return default config when file does not exist', () => {
     const config = loadProjectConfig('/nonexistent')
     expect(config).toEqual({
-      imagetag_on_tag_pushed: ['{tag}'],
-      imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
-      watch_files: [],
+      imageTagsOnTagPushed: ['{tag}'],
+      imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+      watchFiles: [],
     })
   })
 
-  test('should load config with watch_files from project file', () => {
+  test('should load config with watchFiles from project file', () => {
     const configPath = join(testDir, 'smart-docker-build.yml')
     writeFileSync(
       configPath,
       `
-imagetag_on_tag_pushed: ["{tag}"]
-imagetag_on_branch_pushed: ["{branch}-{sha}", "latest"]
-watch_files: ["package.json", "src/**/*"]
+imageTagsOnTagPushed: ["{tag}"]
+imageTagsOnBranchPushed: ["{branch}-{sha}", "latest"]
+watchFiles: ["package.json", "src/**/*"]
 `,
     )
 
     const config = loadProjectConfig(testDir)
     expect(config).toEqual({
-      imagetag_on_tag_pushed: ['{tag}'],
-      imagetag_on_branch_pushed: ['{branch}-{sha}', 'latest'],
-      watch_files: ['package.json', 'src/**/*'],
+      imageTagsOnTagPushed: ['{tag}'],
+      imageTagsOnBranchPushed: ['{branch}-{sha}', 'latest'],
+      watchFiles: ['package.json', 'src/**/*'],
     })
   })
 })
@@ -153,8 +153,8 @@ describe('extractDockerfileConfig', () => {
     const config = extractDockerfileConfig('/nonexistent/Dockerfile', '/tmp')
     expect(config).toEqual({
       imageName: null,
-      imagetagOnTagPushed: null,
-      imagetagOnBranchPushed: null,
+      imageTagsOnTagPushed: null,
+      imageTagsOnBranchPushed: null,
       watchFiles: null,
     })
   })
@@ -170,8 +170,8 @@ WORKDIR /app`,
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-app')
-    expect(config.imagetagOnTagPushed).toBeNull()
-    expect(config.imagetagOnBranchPushed).toBeNull()
+    expect(config.imageTagsOnTagPushed).toBeNull()
+    expect(config.imageTagsOnBranchPushed).toBeNull()
     expect(config.watchFiles).toBeNull()
   })
 
@@ -193,16 +193,16 @@ WORKDIR /app`,
     writeFileSync(
       dockerfilePath,
       `# image: dev-tools
-# imagetag_on_tag_pushed: false
-# imagetag_on_branch_pushed: ["dev-v1.0"]
+# imageTagsOnTagPushed: null
+# imageTagsOnBranchPushed: ["dev-v1.0"]
 FROM alpine:3.18
 WORKDIR /app`,
     )
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('dev-tools')
-    expect(config.imagetagOnTagPushed).toBe(false)
-    expect(config.imagetagOnBranchPushed).toEqual(['dev-v1.0'])
+    expect(config.imageTagsOnTagPushed).toBe(null)
+    expect(config.imageTagsOnBranchPushed).toEqual(['dev-v1.0'])
   })
 
   test('should parse JSON array configuration', () => {
@@ -210,14 +210,14 @@ WORKDIR /app`,
     writeFileSync(
       dockerfilePath,
       `# image: my-app
-# imagetag_on_tag_pushed: ["{tag}", "latest", "stable"]
-# imagetag_on_branch_pushed: ["{branch}-{sha}"]
+# imageTagsOnTagPushed: ["{tag}", "latest", "stable"]
+# imageTagsOnBranchPushed: ["{branch}-{sha}"]
 FROM node:18`,
     )
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
-    expect(config.imagetagOnTagPushed).toEqual(['{tag}', 'latest', 'stable'])
-    expect(config.imagetagOnBranchPushed).toEqual(['{branch}-{sha}'])
+    expect(config.imageTagsOnTagPushed).toEqual(['{tag}', 'latest', 'stable'])
+    expect(config.imageTagsOnBranchPushed).toEqual(['{branch}-{sha}'])
   })
 
   test('should handle single string as array', () => {
@@ -225,40 +225,40 @@ FROM node:18`,
     writeFileSync(
       dockerfilePath,
       `# image: my-app
-# imagetag_on_tag_pushed: production
-# imagetag_on_branch_pushed: dev-latest
+# imageTagsOnTagPushed: production
+# imageTagsOnBranchPushed: dev-latest
 FROM node:18`,
     )
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
-    expect(config.imagetagOnTagPushed).toEqual(['production'])
-    expect(config.imagetagOnBranchPushed).toEqual(['dev-latest'])
+    expect(config.imageTagsOnTagPushed).toEqual(['production'])
+    expect(config.imageTagsOnBranchPushed).toEqual(['dev-latest'])
   })
 
-  test('should extract watch_files configuration', () => {
+  test('should extract watchFiles configuration', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(
       dockerfilePath,
       `# image: my-devcontainer
-# imagetag_on_tag_pushed: false
-# imagetag_on_branch_pushed: ["v1.0"]
-# watch_files: ["Dockerfile", ".devcontainer/**/*"]
+# imageTagsOnTagPushed: null
+# imageTagsOnBranchPushed: ["v1.0"]
+# watchFiles: ["Dockerfile", ".devcontainer/**/*"]
 FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
     )
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-devcontainer')
-    expect(config.imagetagOnTagPushed).toBe(false)
-    expect(config.imagetagOnBranchPushed).toEqual(['v1.0'])
+    expect(config.imageTagsOnTagPushed).toBe(null)
+    expect(config.imageTagsOnBranchPushed).toEqual(['v1.0'])
     expect(config.watchFiles).toEqual(['Dockerfile', '.devcontainer/**/*'])
   })
 
-  test('should handle single watch_files string', () => {
+  test('should handle single watchFiles string', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(
       dockerfilePath,
       `# image: my-app
-# watch_files: Dockerfile
+# watchFiles: Dockerfile
 FROM node:18`,
     )
 

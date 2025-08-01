@@ -55,11 +55,11 @@ Create `smart-docker-build.yml` in your project root for custom tag templates:
 
 ```yaml
 # Image tag generation templates
-imagetag_on_tag_pushed: ["{tag}"]                           # Git tag pushes
-imagetag_on_branch_pushed: ["{branch}-{timestamp}-{sha}", "latest"]  # Branch pushes
+imageTagsOnTagPushed: ["{tag}"]                           # Git tag pushes
+imageTagsOnBranchPushed: ["{branch}-{timestamp}-{sha}", "latest"]  # Branch pushes
 
 # File watching (optional)
-watch_files: ["package.json", "src/**/*", "Dockerfile*"]    # Build only when these files change
+watchFiles: ["package.json", "src/**/*", "Dockerfile*"]    # Build only when these files change
 ```
 
 ### 2. Dockerfile Comments
@@ -76,9 +76,9 @@ WORKDIR /app
 
 ```dockerfile
 # image: my-devcontainer
-# imagetag_on_tag_pushed: false
-# imagetag_on_branch_pushed: ["v1.0"]
-# watch_files: ["Dockerfile", ".devcontainer/**/*"]
+# imageTagsOnTagPushed: null
+# imageTagsOnBranchPushed: ["v1.0"]
+# watchFiles: ["Dockerfile", ".devcontainer/**/*"]
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 WORKDIR /workspace
 # ... rest of your Dockerfile
@@ -99,10 +99,10 @@ Customize your image tags using these variables:
 ### Tag Examples
 
 ```yaml
-imagetag_on_tag_pushed: ["{tag}"]                    # → v1.0.0
-imagetag_on_tag_pushed: ["{tag}", "latest"]          # → v1.0.0, latest
-imagetag_on_branch_pushed: ["{branch}-{sha}"]        # → main-abc1234
-imagetag_on_branch_pushed: ["{branch}-{timestamp}", "latest"]  # → main-202501291430, latest
+imageTagsOnTagPushed: ["{tag}"]                    # → v1.0.0
+imageTagsOnTagPushed: ["{tag}", "latest"]          # → v1.0.0, latest
+imageTagsOnBranchPushed: ["{branch}-{sha}"]        # → main-abc1234
+imageTagsOnBranchPushed: ["{branch}-{timestamp}", "latest"]  # → main-202501291430, latest
 ```
 
 ## Action Parameters
@@ -172,7 +172,7 @@ hybrid-app/
 │   └── Dockerfile          # image: main-app
 └── devcontainer/
     └── Dockerfile          # image: my-devcontainer
-                            # imagetag_on_tag_pushed: false
+                            # imageTagsOnTagPushed: null
 ```
 **Result**: Custom tags + specified names
 
@@ -182,15 +182,15 @@ When no `smart-docker-build.yml` configuration file exists, the action uses thes
 
 ```yaml
 # Default configuration (equivalent to no config file)
-imagetag_on_tag_pushed: ["{tag}"]
-imagetag_on_branch_pushed: ["{branch}-{timestamp}-{sha}", "latest"]
-watch_files: []  # Empty = always build
+imageTagsOnTagPushed: ["{tag}"]
+imageTagsOnBranchPushed: ["{branch}-{timestamp}-{sha}", "latest"]
+watchFiles: []  # Empty = always build
 ```
 
 **Behavior**:
 - **Branch pushes**: Always build, tag as `{branch}-{timestamp}-{sha}` and `latest`
 - **Tag pushes**: Always build, tag as `{tag}`
-- **File watching**: Always build (empty `watch_files` means no file filtering)
+- **File watching**: Always build (empty `watchFiles` means no file filtering)
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
 
@@ -207,28 +207,28 @@ watch_files: []  # Empty = always build
 ### Release-Only Builds
 ```yaml
 # smart-docker-build.yml
-imagetag_on_branch_pushed: false  # Skip branch builds
-imagetag_on_tag_pushed: ["{tag}"]  # Only build on releases
+imageTagsOnBranchPushed: null  # Skip branch builds
+imageTagsOnTagPushed: ["{tag}"]  # Only build on releases
 ```
 
 ### Multiple Tags per Push
 ```yaml
 # smart-docker-build.yml
-imagetag_on_tag_pushed: ["{tag}", "stable"]
-imagetag_on_branch_pushed: ["{branch}-{sha}", "latest", "{branch}-latest"]
+imageTagsOnTagPushed: ["{tag}", "stable"]
+imageTagsOnBranchPushed: ["{branch}-{sha}", "latest", "{branch}-latest"]
 ```
 
 ### Development vs Production
 ```yaml
 # smart-docker-build.yml
 # Development builds
-imagetag_on_branch_pushed: ["dev-{branch}-{timestamp}", "latest"]
+imageTagsOnBranchPushed: ["dev-{branch}-{timestamp}", "latest"]
 
 # Production releases
-imagetag_on_tag_pushed: ["{tag}", "production"]
+imageTagsOnTagPushed: ["{tag}", "production"]
 
 # Watch specific files for development workflow
-watch_files: ["package.json", "src/**/*", "Dockerfile*"]
+watchFiles: ["package.json", "src/**/*", "Dockerfile*"]
 ```
 
 ## Contributing
