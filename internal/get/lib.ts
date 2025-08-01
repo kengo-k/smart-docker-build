@@ -14,28 +14,27 @@ interface ProjectConfig {
   watchFiles: string[]
 }
 
+// Default configuration
+const DEFAULT_CONFIG: ProjectConfig = {
+  imageTagsOnTagPushed: ['{tag}'],
+  imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+  watchFiles: [], // Empty by default - means always build
+}
+
 // Configuration specified in Dockerfile comment area, used to override project-wide settings
+// If a key is not specified, the corresponding ProjectConfig value will be used
 interface DockerfileConfig {
-  imageName: string | null
-  imageTagsOnTagPushed: string[] | null
-  imageTagsOnBranchPushed: string[] | null
-  watchFiles: string[] | null
+  imageName?: string
+  imageTagsOnTagPushed?: string[] | null
+  imageTagsOnBranchPushed?: string[] | null
+  watchFiles?: string[]
 }
 
-interface ImageSpec {
-  dockerfile: string
-  name: string
-}
-
+// Information required to build a Docker image
 interface BuildArg {
-  path: string
-  name: string
-  tag: string
-}
-
-interface GenerateBuildArgsResult {
-  buildArgs: BuildArg[]
-  validationErrors: string[]
+  dockerfilePath: string
+  imageName: string
+  imageTag: string
 }
 
 interface TemplateVariables {
@@ -60,15 +59,10 @@ interface GitHubContext {
   }
 }
 
-interface ImageToProcess extends ImageSpec {
+interface ImageToProcess {
+  dockerfile: string
+  name: string
   dockerfileConfig: DockerfileConfig
-}
-
-// Default configuration
-const DEFAULT_CONFIG: ProjectConfig = {
-  imageTagsOnTagPushed: ['{tag}'],
-  imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
-  watchFiles: [], // Empty by default - means always build
 }
 
 // Configuration schemas
@@ -88,7 +82,7 @@ export async function generateBuildArgs(
   timezone: string,
   githubContext: GitHubContext,
   workingDir: string,
-): Promise<GenerateBuildArgsResult> {
+): Promise<BuildArg[]> {
   // Validate token
   if (!token || token.trim() === '') {
     throw new Error('❌ Token is required but not provided')
@@ -165,7 +159,7 @@ export async function generateBuildArgs(
 
       imagesToProcess.push({
         dockerfile: dockerfilePath,
-        name: dockerfileConfig.imageName,
+        name: dockerfileConfig.imageName!,
         dockerfileConfig,
       })
     }
@@ -183,12 +177,12 @@ export async function generateBuildArgs(
   for (const image of imagesToProcess) {
     // Get effective configuration (Dockerfile config overrides project config)
     const effectiveTagPushedConfig =
-      image.dockerfileConfig.imageTagsOnTagPushed !== null
+      image.dockerfileConfig.imageTagsOnTagPushed !== undefined
         ? image.dockerfileConfig.imageTagsOnTagPushed
         : projectConfig.imageTagsOnTagPushed
 
     const effectiveBranchPushedConfig =
-      image.dockerfileConfig.imageTagsOnBranchPushed !== null
+      image.dockerfileConfig.imageTagsOnBranchPushed !== undefined
         ? image.dockerfileConfig.imageTagsOnBranchPushed
         : projectConfig.imageTagsOnBranchPushed
 
@@ -210,15 +204,15 @@ export async function generateBuildArgs(
 
       for (const tagName of tags) {
         outputs.push({
-          path: image.dockerfile,
-          name: image.name,
-          tag: tagName,
+          dockerfilePath: image.dockerfile,
+          imageName: image.name,
+          imageTag: tagName,
         })
       }
     } else if (branch && effectiveBranchPushedConfig !== null) {
       // Branch push: check for changes using watchFiles (Dockerfile config overrides project config)
       const effectiveWatchFiles =
-        image.dockerfileConfig.watchFiles !== null
+        image.dockerfileConfig.watchFiles !== undefined
           ? image.dockerfileConfig.watchFiles
           : projectConfig.watchFiles
 
@@ -245,19 +239,16 @@ export async function generateBuildArgs(
 
         for (const tagName of tags) {
           outputs.push({
-            path: image.dockerfile,
-            name: image.name,
-            tag: tagName,
+            dockerfilePath: image.dockerfile,
+            imageName: image.name,
+            imageTag: tagName,
           })
         }
       }
     }
   }
 
-  return {
-    buildArgs: outputs,
-    validationErrors: [],
-  }
+  return outputs
 }
 
 // Load project configuration
@@ -320,12 +311,7 @@ export function extractDockerfileConfig(
 ): DockerfileConfig {
   const absolutePath = path.resolve(workingDir, dockerfilePath)
 
-  const result: DockerfileConfig = {
-    imageName: null,
-    imageTagsOnTagPushed: null,
-    imageTagsOnBranchPushed: null,
-    watchFiles: null,
-  }
+  const result: DockerfileConfig = {}
 
   if (!fs.existsSync(absolutePath)) {
     return result
@@ -416,7 +402,7 @@ export function extractDockerfileConfig(
 export function extractImageNameFromDockerfile(
   dockerfilePath: string,
   workingDir: string,
-): string | null {
+): string | undefined {
   return extractDockerfileConfig(dockerfilePath, workingDir).imageName
 }
 

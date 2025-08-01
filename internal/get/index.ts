@@ -7,18 +7,12 @@ async function main(): Promise<void> {
   const token = getInput('token')
   const timezone = getInput('timezone')
 
-  const { buildArgs, validationErrors } = await generateBuildArgs(
+  const buildArgs = await generateBuildArgs(
     token,
     timezone,
     github.context,
     process.env.GITHUB_WORKSPACE!,
   )
-
-  // Handle validation errors as failures
-  if (validationErrors.length > 0) {
-    setFailed(`❌ Validation errors found:\n${validationErrors.join('\n')}`)
-    return
-  }
 
   if (buildArgs.length === 0) {
     info('ℹ️ No images to build based on current configuration and changes')

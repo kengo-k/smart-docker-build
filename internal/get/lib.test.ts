@@ -139,24 +139,19 @@ watchFiles: ["package.json", "src/**/*"]
 })
 
 describe('extractImageNameFromDockerfile', () => {
-  test('should return null for non-existent file', () => {
+  test('should return undefined for non-existent file', () => {
     const name = extractImageNameFromDockerfile(
       '/nonexistent/Dockerfile',
       '/tmp',
     )
-    expect(name).toBeNull()
+    expect(name).toBeUndefined()
   })
 })
 
 describe('extractDockerfileConfig', () => {
-  test('should return null values for non-existent file', () => {
+  test('should return empty object for non-existent file', () => {
     const config = extractDockerfileConfig('/nonexistent/Dockerfile', '/tmp')
-    expect(config).toEqual({
-      imageName: null,
-      imageTagsOnTagPushed: null,
-      imageTagsOnBranchPushed: null,
-      watchFiles: null,
-    })
+    expect(config).toEqual({})
   })
 
   test('should extract basic image name (legacy format)', () => {
@@ -170,9 +165,9 @@ WORKDIR /app`,
 
     const config = extractDockerfileConfig(dockerfilePath, testDir)
     expect(config.imageName).toBe('my-app')
-    expect(config.imageTagsOnTagPushed).toBeNull()
-    expect(config.imageTagsOnBranchPushed).toBeNull()
-    expect(config.watchFiles).toBeNull()
+    expect(config.imageTagsOnTagPushed).toBeUndefined()
+    expect(config.imageTagsOnBranchPushed).toBeUndefined()
+    expect(config.watchFiles).toBeUndefined()
   })
 
   test('should extract image name (new format)', () => {
