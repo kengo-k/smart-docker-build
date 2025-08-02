@@ -33,6 +33,7 @@ interface GitHubContext {
                 login: string;
             };
         };
+        before?: string;
         after?: string;
         ref?: string;
     };
@@ -46,7 +47,7 @@ export declare function getRepositoryChanges(octokit: Octokit, repository: {
         login: string;
     };
     name: string;
-}, after: string): Promise<import("@octokit/types").OctokitResponse<{
+}, before: string, after: string): Promise<import("@octokit/types").OctokitResponse<{
     url: string;
     html_url: string;
     permalink_url: string;
