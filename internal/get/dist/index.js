@@ -46129,6 +46129,7 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
             }
         }
     }
+    console.log('generated build arguments: ', outputs);
     return outputs;
 }
 // Load project configuration

@@ -260,7 +260,7 @@ export async function generateBuildArgs(
       }
     }
   }
-
+  console.log('generated build arguments: ', outputs)
   return outputs
 }
 

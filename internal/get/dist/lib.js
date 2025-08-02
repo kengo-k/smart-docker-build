@@ -122,6 +122,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
             }
         }
     }
+    console.log('generated build arguments: ', outputs);
     return outputs;
 }
 // Load project configuration
