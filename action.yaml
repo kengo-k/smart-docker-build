@@ -20,6 +20,10 @@ inputs:
     description: 'Cache type: "gha" (GitHub Actions Cache) or "disabled"'
     required: false
     default: 'gha'
+  use_dryrun:
+    description: 'Enable dry run mode - builds images but skips pushing to registry'
+    required: false
+    default: 'false'
 runs:
   using: 'composite'
   steps:
@@ -32,8 +36,8 @@ runs:
       run: node ${{ github.action_path }}/internal/get/dist/index.js
       shell: bash
       env:
-        INPUT_TOKEN: ${{ inputs.token }}      # ← ここで inputs.token を INPUT_TOKEN に変換
-        INPUT_TIMEZONE: ${{ inputs.timezone }} # ← ここで inputs.timezone を INPUT_TIMEZONE に変換
+        INPUT_TOKEN: ${{ inputs.token }}
+        INPUT_TIMEZONE: ${{ inputs.timezone }}
         INPUT_CACHE_ENABLED: ${{ inputs.cache_enabled }}
         INPUT_CACHE_TYPE: ${{ inputs.cache_type }}
 
@@ -75,10 +79,15 @@ runs:
           fi
 
           if eval "$build_cmd $cache_from $cache_to -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path)"; then
-            if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
+            if [ "${{ inputs.use_dryrun }}" = "true" ]; then
+              echo "Dry run mode: Skipping push for ghcr.io/${{ github.actor }}/$name:$tag"
               success_count=$((success_count + 1))
             else
-              failure_count=$((failure_count + 1))
+              if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
+                success_count=$((success_count + 1))
+              else
+                failure_count=$((failure_count + 1))
+              fi
             fi
           else
             failure_count=$((failure_count + 1))
