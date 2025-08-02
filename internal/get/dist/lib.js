@@ -18,12 +18,18 @@ const configSchema = z.object({
 export async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     // Validate token
     if (!token || token.trim() === '') {
-        throw new Error('❌ Token is required but not provided');
+        throw new Error('Token is required but not provided');
     }
     // Load configuration from project file only
     const projectConfig = loadProjectConfig(workingDir);
+    console.log('load projectConfig: ', projectConfig);
     // Validate template variables in tag configuration
-    const availableVariables = Object.keys({});
+    const availableVariables = [
+        'tag',
+        'branch',
+        'sha',
+        'timestamp',
+    ];
     if (projectConfig.imageTagsOnTagPushed !== null) {
         validateTemplateVariables(projectConfig.imageTagsOnTagPushed, availableVariables);
     }
@@ -32,16 +38,20 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     }
     // Get repository information
     const octokit = new Octokit({ auth: token });
-    const { repository, after, ref } = githubContext.payload;
-    if (!repository || !after || !ref) {
-        throw new Error('❌ Missing required GitHub context information (repository, after, ref)');
+    const { repository, before, after, ref } = githubContext.payload;
+    if (!repository || !before || !after || !ref) {
+        throw new Error('Missing required GitHub context information (repository, before, after, ref)');
     }
+    console.log('parseGitRef: ', ref);
     const { branch, tag } = parseGitRef(ref);
+    console.log('branch: ', branch);
+    console.log('tag: ', tag);
     // Get repository changes for change detection
-    const compare = await getRepositoryChanges(octokit, repository, after);
+    const compare = await getRepositoryChanges(octokit, repository, before, after);
     const changedFiles = compare.data.files || [];
     // Auto-detect Dockerfiles and determine images to build
     const dockerfiles = findDockerfiles(workingDir);
+    console.log('dockerfiles: ', dockerfiles);
     if (dockerfiles.length === 0) {
         throw new Error('❌ No Dockerfiles found in the repository');
     }
@@ -234,11 +244,11 @@ export function extractDockerfileConfig(dockerfilePath, workingDir) {
     }
     return result;
 }
-export async function getRepositoryChanges(octokit, repository, after) {
+export async function getRepositoryChanges(octokit, repository, before, after) {
     return await octokit.repos.compareCommits({
         owner: repository.owner.login,
         repo: repository.name,
-        base: after + '^',
+        base: before,
         head: after,
     });
 }
@@ -312,8 +322,7 @@ export function validateTemplateVariables(templates, availableVariables) {
         }
     }
     if (missingVariables.length > 0) {
-        throw new Error(`❌ Invalid template variables found: {${missingVariables.join('}, {')}}\n` +
-            `💡 Available variables: {${availableVariables.join('}, {')}}`);
+        throw new Error(`Invalid template variables found: {${missingVariables.join('}, {')}}`);
     }
 }
 // Generate tags from templates

@@ -33527,16 +33527,17 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 
 
 async function main() {
+    console.log('⭐ js action `internal/get` started');
     const token = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('token');
     const timezone = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('timezone');
     const buildArgs = await (0,_lib_js__WEBPACK_IMPORTED_MODULE_2__/* .generateBuildArgs */ .fQ)(token, timezone, _actions_github__WEBPACK_IMPORTED_MODULE_1__.context, process.env.GITHUB_WORKSPACE);
     if (buildArgs.length === 0) {
-        (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.info)('ℹ️ No images to build based on current configuration and changes');
+        console.log('ℹ️ No images to build based on current configuration and changes');
         (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('build_args', JSON.stringify([]));
         (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('has_builds', 'false');
         return;
     }
-    (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.info)(`✅ Found ${buildArgs.length} build targets`);
+    console.log(`✅ Found ${buildArgs.length} build targets`);
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('build_args', JSON.stringify(buildArgs));
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('has_builds', 'true');
 }
@@ -46024,12 +46025,18 @@ const configSchema = z.object({
 async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     // Validate token
     if (!token || token.trim() === '') {
-        throw new Error('❌ Token is required but not provided');
+        throw new Error('Token is required but not provided');
     }
     // Load configuration from project file only
     const projectConfig = loadProjectConfig(workingDir);
+    console.log('load projectConfig: ', projectConfig);
     // Validate template variables in tag configuration
-    const availableVariables = Object.keys({});
+    const availableVariables = [
+        'tag',
+        'branch',
+        'sha',
+        'timestamp',
+    ];
     if (projectConfig.imageTagsOnTagPushed !== null) {
         validateTemplateVariables(projectConfig.imageTagsOnTagPushed, availableVariables);
     }
@@ -46038,16 +46045,20 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     }
     // Get repository information
     const octokit = new dist_node.Octokit({ auth: token });
-    const { repository, after, ref } = githubContext.payload;
-    if (!repository || !after || !ref) {
-        throw new Error('❌ Missing required GitHub context information (repository, after, ref)');
+    const { repository, before, after, ref } = githubContext.payload;
+    if (!repository || !before || !after || !ref) {
+        throw new Error('Missing required GitHub context information (repository, before, after, ref)');
     }
+    console.log('parseGitRef: ', ref);
     const { branch, tag } = parseGitRef(ref);
+    console.log('branch: ', branch);
+    console.log('tag: ', tag);
     // Get repository changes for change detection
-    const compare = await getRepositoryChanges(octokit, repository, after);
+    const compare = await getRepositoryChanges(octokit, repository, before, after);
     const changedFiles = compare.data.files || [];
     // Auto-detect Dockerfiles and determine images to build
     const dockerfiles = findDockerfiles(workingDir);
+    console.log('dockerfiles: ', dockerfiles);
     if (dockerfiles.length === 0) {
         throw new Error('❌ No Dockerfiles found in the repository');
     }
@@ -46240,11 +46251,11 @@ function extractDockerfileConfig(dockerfilePath, workingDir) {
     }
     return result;
 }
-async function getRepositoryChanges(octokit, repository, after) {
+async function getRepositoryChanges(octokit, repository, before, after) {
     return await octokit.repos.compareCommits({
         owner: repository.owner.login,
         repo: repository.name,
-        base: after + '^',
+        base: before,
         head: after,
     });
 }
@@ -46318,8 +46329,7 @@ function validateTemplateVariables(templates, availableVariables) {
         }
     }
     if (missingVariables.length > 0) {
-        throw new Error(`❌ Invalid template variables found: {${missingVariables.join('}, {')}}\n` +
-            `💡 Available variables: {${availableVariables.join('}, {')}}`);
+        throw new Error(`Invalid template variables found: {${missingVariables.join('}, {')}}`);
     }
 }
 // Generate tags from templates

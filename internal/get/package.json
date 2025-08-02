@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc && ncc build dist/index.js -o dist",
+    "build:watch": "tsc --watch",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
