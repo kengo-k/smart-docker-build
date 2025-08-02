@@ -11,7 +11,7 @@ import {
   isBuildRequired,
   loadProjectConfig,
   parseGitRef,
-  validateTagsBeforeBuild,
+  ensureUniqueTag,
   validateTemplateVariables,
 } from './lib.js'
 
@@ -399,7 +399,7 @@ describe('checkImageTagExists', () => {
   })
 })
 
-describe('validateTagsBeforeBuild', () => {
+describe('ensureUniqueTag', () => {
   test('should not throw when no tags exist', async () => {
     const mockOctokit = {
       request: async () => {
@@ -410,7 +410,7 @@ describe('validateTagsBeforeBuild', () => {
     const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
 
     await expect(
-      validateTagsBeforeBuild(
+      ensureUniqueTag(
         ['{tag}', 'latest'],
         templateVariables,
         mockOctokit,
@@ -438,7 +438,7 @@ describe('validateTagsBeforeBuild', () => {
     const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
 
     await expect(
-      validateTagsBeforeBuild(
+      ensureUniqueTag(
         ['{tag}'],
         templateVariables,
         mockOctokit,
@@ -467,7 +467,7 @@ describe('validateTagsBeforeBuild', () => {
 
     // Should throw for v1.0 (not latest, since latest is allowed to be overwritten)
     await expect(
-      validateTagsBeforeBuild(
+      ensureUniqueTag(
         ['{tag}', 'latest'], // v1.0 exists and should cause error, latest is allowed
         templateVariables,
         mockOctokit,

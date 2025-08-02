@@ -202,7 +202,7 @@ export async function generateBuildArgs(
     // Check build conditions
     if (tag && spec.imageTagsOnTagPushed !== null) {
       // Tag push: validate tags don't exist, then build
-      await validateTagsBeforeBuild(
+      await ensureUniqueTag(
         spec.imageTagsOnTagPushed,
         templateVariables,
         octokit,
@@ -226,7 +226,7 @@ export async function generateBuildArgs(
       // Branch push: check for changes using watchFiles
       if (isBuildRequired(spec.watchFiles, changedFiles)) {
         // Validate tags don't exist, then build
-        await validateTagsBeforeBuild(
+        await ensureUniqueTag(
           spec.imageTagsOnBranchPushed,
           templateVariables,
           octokit,
@@ -452,8 +452,8 @@ export async function checkImageTagExists(
   }
 }
 
-// Validate that image tags don't already exist in registry
-export async function validateTagsBeforeBuild(
+// Ensure image tags are unique in registry
+export async function ensureUniqueTag(
   tags: string[],
   templateVariables: TemplateVariables,
   octokit: Octokit,
