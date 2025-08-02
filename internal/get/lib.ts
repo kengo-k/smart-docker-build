@@ -23,8 +23,19 @@ interface DockerfileConfig {
   watchFiles?: string[]
 }
 
-// Information required to build a Docker image
-interface BuildArg {
+// Consolidated build specification that combines project settings and Dockerfile comments
+// Contains all necessary information for building a single Docker image
+interface ImageBuildSpec {
+  dockerfilePath: string
+  imageName: string
+  imageTagsOnTagPushed: string[] | null
+  imageTagsOnBranchPushed: string[] | null
+  watchFiles: string[]
+}
+
+// Final result of this JavaScript action that will be passed to subsequent workflow steps
+// Contains the resolved build parameters for Docker image construction
+interface ActionResult {
   dockerfilePath: string
   imageName: string
   imageTag: string
@@ -55,14 +66,6 @@ interface GitHubContext {
   }
 }
 
-interface ImageBuildSpec {
-  dockerfilePath: string
-  imageName: string
-  imageTagsOnTagPushed: string[] | null
-  imageTagsOnBranchPushed: string[] | null
-  watchFiles: string[]
-}
-
 // Configuration schemas
 const tagConfigSchema = z.union([z.literal(null), z.array(z.string())])
 
@@ -80,7 +83,7 @@ export async function generateBuildArgs(
   timezone: string,
   githubContext: GitHubContext,
   workingDir: string,
-): Promise<BuildArg[]> {
+): Promise<ActionResult[]> {
   // Validate token
   if (!token || token.trim() === '') {
     throw new Error('❌ Token is required but not provided')
@@ -90,7 +93,7 @@ export async function generateBuildArgs(
   const projectConfig = loadProjectConfig(workingDir)
 
   // Validate template variables in tag configuration
-  const availableVariables = ['tag', 'branch', 'sha', 'timestamp']
+  const availableVariables = Object.keys({} as TemplateVariables)
   if (projectConfig.imageTagsOnTagPushed !== null) {
     validateTemplateVariables(
       projectConfig.imageTagsOnTagPushed,
@@ -186,7 +189,7 @@ export async function generateBuildArgs(
   }
 
   // Generate build arguments based on git event
-  const outputs: BuildArg[] = []
+  const outputs: ActionResult[] = []
   const templateVariables = createTemplateVariables(
     branch,
     tag,
