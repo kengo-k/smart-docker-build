@@ -5,13 +5,13 @@ import { join } from 'path'
 import {
   checkImageTagExists,
   createTemplateVariables,
+  ensureUniqueTag,
   extractDockerfileConfig,
   extractImageNameFromDockerfile,
-  generateTagsFromTemplates,
+  generateTags,
   isBuildRequired,
   loadProjectConfig,
   parseGitRef,
-  ensureUniqueTag,
   validateTemplateVariables,
 } from './lib.js'
 
@@ -287,12 +287,12 @@ describe('validateTemplateVariables', () => {
   })
 })
 
-describe('generateTagsFromTemplates', () => {
+describe('generateTags', () => {
   test('should generate tags from templates', () => {
     const templates = ['{tag}', '{branch}-{sha}']
     const variables = { tag: 'v1.0.0', branch: 'main', sha: 'abc1234' }
 
-    const result = generateTagsFromTemplates(templates, variables)
+    const result = generateTags(templates, variables)
     expect(result).toEqual(['v1.0.0', 'main-abc1234'])
   })
 
@@ -300,7 +300,7 @@ describe('generateTagsFromTemplates', () => {
     const templates = ['{tag}', '{branch}-{missing}']
     const variables = { tag: 'v1.0.0', branch: 'main' }
 
-    const result = generateTagsFromTemplates(templates, variables)
+    const result = generateTags(templates, variables)
     expect(result).toEqual(['v1.0.0', 'main-{missing}'])
   })
 })

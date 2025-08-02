@@ -210,10 +210,7 @@ export async function generateBuildArgs(
         spec.imageName,
       )
 
-      const tags = generateTagsFromTemplates(
-        spec.imageTagsOnTagPushed,
-        templateVariables,
-      )
+      const tags = generateTags(spec.imageTagsOnTagPushed, templateVariables)
 
       for (const tagName of tags) {
         outputs.push({
@@ -234,7 +231,7 @@ export async function generateBuildArgs(
           spec.imageName,
         )
 
-        const tags = generateTagsFromTemplates(
+        const tags = generateTags(
           spec.imageTagsOnBranchPushed,
           templateVariables,
         )
@@ -461,7 +458,7 @@ export async function ensureUniqueTag(
   imageName: string,
 ): Promise<void> {
   // Generate final tags from templates
-  const finalTags = generateTagsFromTemplates(tags, templateVariables)
+  const finalTags = generateTags(tags, templateVariables)
 
   // Check each tag for existence (skip 'latest' as it's meant to be overwritten)
   for (const tag of finalTags) {
@@ -541,7 +538,7 @@ export function validateTemplateVariables(
 }
 
 // Generate tags from templates
-export function generateTagsFromTemplates(
+export function generateTags(
   templates: string[],
   variables: TemplateVariables,
 ): string[] {
