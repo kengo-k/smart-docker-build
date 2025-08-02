@@ -14,13 +14,6 @@ interface ProjectConfig {
   watchFiles: string[]
 }
 
-// Default configuration
-const DEFAULT_CONFIG: ProjectConfig = {
-  imageTagsOnTagPushed: ['{tag}'],
-  imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
-  watchFiles: [], // Empty by default - means always build
-}
-
 // Configuration specified in Dockerfile comment area, used to override project-wide settings
 // If a key is not specified, the corresponding ProjectConfig value will be used
 interface DockerfileConfig {
@@ -266,7 +259,11 @@ export function loadProjectConfig(workingDir: string): ProjectConfig {
     }
   }
 
-  return DEFAULT_CONFIG
+  return {
+    imageTagsOnTagPushed: ['{tag}'],
+    imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+    watchFiles: [], // Empty by default - means always build
+  }
 }
 
 // Find all Dockerfiles in the project
