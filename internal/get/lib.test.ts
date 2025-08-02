@@ -323,20 +323,16 @@ describe('createTemplateVariables', () => {
 })
 
 describe('checkImageTagExists', () => {
-  test('should return false when API call fails', async () => {
+  test('should throw error when API call fails', async () => {
     const mockOctokit = {
       request: async () => {
         throw new Error('API Error')
       },
     } as any
 
-    const exists = await checkImageTagExists(
-      mockOctokit,
-      'owner',
-      'my-app',
-      'v1.0',
-    )
-    expect(exists).toBe(false)
+    await expect(
+      checkImageTagExists(mockOctokit, 'my-app', 'v1.0'),
+    ).rejects.toThrow('API Error')
   })
 
   test('should return true when tag exists', async () => {
@@ -354,12 +350,7 @@ describe('checkImageTagExists', () => {
       }),
     } as any
 
-    const exists = await checkImageTagExists(
-      mockOctokit,
-      'owner',
-      'my-app',
-      'v1.0',
-    )
+    const exists = await checkImageTagExists(mockOctokit, 'my-app', 'v1.0')
     expect(exists).toBe(true)
   })
 
@@ -378,18 +369,13 @@ describe('checkImageTagExists', () => {
       }),
     } as any
 
-    const exists = await checkImageTagExists(
-      mockOctokit,
-      'owner',
-      'my-app',
-      'v1.0',
-    )
+    const exists = await checkImageTagExists(mockOctokit, 'my-app', 'v1.0')
     expect(exists).toBe(false)
   })
 })
 
 describe('ensureUniqueTag', () => {
-  test('should not throw when no tags exist', async () => {
+  test('should throw when API call fails', async () => {
     const mockOctokit = {
       request: async () => {
         throw new Error('Package not found')
@@ -403,10 +389,9 @@ describe('ensureUniqueTag', () => {
         ['{tag}', 'latest'],
         templateVariables,
         mockOctokit,
-        'owner',
         'my-app',
       ),
-    ).resolves.not.toThrow()
+    ).rejects.toThrow('Package not found')
   })
 
   test('should throw when tag already exists', async () => {
@@ -427,13 +412,7 @@ describe('ensureUniqueTag', () => {
     const templateVariables = { tag: 'v1.0', sha: 'abc1234' }
 
     await expect(
-      ensureUniqueTag(
-        ['{tag}'],
-        templateVariables,
-        mockOctokit,
-        'owner',
-        'my-app',
-      ),
+      ensureUniqueTag(['{tag}'], templateVariables, mockOctokit, 'my-app'),
     ).rejects.toThrow("❌ Image tag 'my-app:v1.0' already exists in registry")
   })
 
@@ -460,7 +439,6 @@ describe('ensureUniqueTag', () => {
         ['{tag}', 'latest'], // v1.0 exists and should cause error, latest is allowed
         templateVariables,
         mockOctokit,
-        'owner',
         'my-app',
       ),
     ).rejects.toThrow("❌ Image tag 'my-app:v1.0' already exists in registry")

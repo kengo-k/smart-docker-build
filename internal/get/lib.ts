@@ -205,7 +205,6 @@ export async function generateBuildArgs(
         spec.imageTagsOnTagPushed,
         templateVariables,
         octokit,
-        repository.owner.login,
         spec.imageName,
       )
 
@@ -226,7 +225,6 @@ export async function generateBuildArgs(
           spec.imageTagsOnBranchPushed,
           templateVariables,
           octokit,
-          repository.owner.login,
           spec.imageName,
         )
 
@@ -429,32 +427,26 @@ export async function getRepositoryChanges(
 // Check if image tag exists in GitHub Container Registry
 export async function checkImageTagExists(
   octokit: Octokit,
-  owner: string,
   imageName: string,
   tag: string,
 ): Promise<boolean> {
-  try {
-    // GitHub Container Registry API
-    // Extract the package name from the full image name (e.g., "owner/my-app" -> "my-app")
-    const packageName = imageName.includes('/')
-      ? imageName.split('/').pop()
-      : imageName
+  // GitHub Container Registry API
+  // Extract the package name from the full image name (e.g., "owner/my-app" -> "my-app")
+  const packageName = imageName.includes('/')
+    ? imageName.split('/').pop()
+    : imageName
 
-    const response = await octokit.request(
-      'GET /user/packages/container/{package_name}/versions',
-      {
-        package_name: packageName,
-      },
-    )
+  const response = await octokit.request(
+    'GET /user/packages/container/{package_name}/versions',
+    {
+      package_name: packageName,
+    },
+  )
 
-    // Check if any version has the specified tag
-    return response.data.some((version: any) =>
-      version.metadata?.container?.tags?.includes(tag),
-    )
-  } catch (error) {
-    // If we can't access the registry or package doesn't exist, assume tag doesn't exist
-    return false
-  }
+  // Check if any version has the specified tag
+  return response.data.some((version: any) =>
+    version.metadata?.container?.tags?.includes(tag),
+  )
 }
 
 // Ensure image tags are unique in registry
@@ -462,7 +454,6 @@ export async function ensureUniqueTag(
   tags: string[],
   templateVariables: TemplateVariables,
   octokit: Octokit,
-  owner: string,
   imageName: string,
 ): Promise<void> {
   // Generate final tags from templates
@@ -474,7 +465,7 @@ export async function ensureUniqueTag(
       continue // Allow overwriting 'latest' tag
     }
 
-    const exists = await checkImageTagExists(octokit, owner, imageName, tag)
+    const exists = await checkImageTagExists(octokit, imageName, tag)
     if (exists) {
       throw new Error(
         `❌ Image tag '${imageName}:${tag}' already exists in registry\n` +
