@@ -59,7 +59,7 @@ interface GitHubContext {
   }
 }
 
-interface ImageToProcess {
+interface ImageBuildSpec {
   dockerfilePath: string
   imageName: string
   imageTagsOnTagPushed: string[] | null
@@ -131,13 +131,13 @@ export async function generateBuildArgs(
     throw new Error('❌ No Dockerfiles found in the repository')
   }
 
-  const imagesToProcess: ImageToProcess[] = []
+  const imageBuildSpecs: ImageBuildSpec[] = []
 
   if (dockerfiles.length === 1) {
     // Single Dockerfile: check for image name comment first
     const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir)
 
-    imagesToProcess.push({
+    imageBuildSpecs.push({
       dockerfilePath: dockerfiles[0],
       imageName: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
       imageTagsOnTagPushed: resolveConfig(
@@ -170,7 +170,7 @@ export async function generateBuildArgs(
         )
       }
 
-      imagesToProcess.push({
+      imageBuildSpecs.push({
         dockerfilePath: dockerfilePath,
         imageName: dockerfileConfig.imageName!,
         imageTagsOnTagPushed: resolveConfig(
@@ -198,51 +198,51 @@ export async function generateBuildArgs(
     after,
   )
 
-  for (const image of imagesToProcess) {
+  for (const spec of imageBuildSpecs) {
     // Check build conditions
-    if (tag && image.imageTagsOnTagPushed !== null) {
+    if (tag && spec.imageTagsOnTagPushed !== null) {
       // Tag push: validate tags don't exist, then build
       await validateTagsBeforeBuild(
-        image.imageTagsOnTagPushed,
+        spec.imageTagsOnTagPushed,
         templateVariables,
         octokit,
         repository.owner.login,
-        image.imageName,
+        spec.imageName,
       )
 
       const tags = generateTagsFromTemplates(
-        image.imageTagsOnTagPushed,
+        spec.imageTagsOnTagPushed,
         templateVariables,
       )
 
       for (const tagName of tags) {
         outputs.push({
-          dockerfilePath: image.dockerfilePath,
-          imageName: image.imageName,
+          dockerfilePath: spec.dockerfilePath,
+          imageName: spec.imageName,
           imageTag: tagName,
         })
       }
-    } else if (branch && image.imageTagsOnBranchPushed !== null) {
+    } else if (branch && spec.imageTagsOnBranchPushed !== null) {
       // Branch push: check for changes using watchFiles
-      if (isBuildRequired(image.watchFiles, changedFiles)) {
+      if (isBuildRequired(spec.watchFiles, changedFiles)) {
         // Validate tags don't exist, then build
         await validateTagsBeforeBuild(
-          image.imageTagsOnBranchPushed,
+          spec.imageTagsOnBranchPushed,
           templateVariables,
           octokit,
           repository.owner.login,
-          image.imageName,
+          spec.imageName,
         )
 
         const tags = generateTagsFromTemplates(
-          image.imageTagsOnBranchPushed,
+          spec.imageTagsOnBranchPushed,
           templateVariables,
         )
 
         for (const tagName of tags) {
           outputs.push({
-            dockerfilePath: image.dockerfilePath,
-            imageName: image.imageName,
+            dockerfilePath: spec.dockerfilePath,
+            imageName: spec.imageName,
             imageTag: tagName,
           })
         }
