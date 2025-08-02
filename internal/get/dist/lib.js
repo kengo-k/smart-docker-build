@@ -1,25 +1,18 @@
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { existsSync, readFileSync } from 'fs';
-import { readdir } from 'fs/promises';
-import { load } from 'js-yaml';
-import { resolve } from 'path';
+import * as fs from 'fs';
+import * as yaml from 'js-yaml';
+import * as path from 'path';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
-// Default configuration
-const DEFAULT_CONFIG = {
-    imagetag_on_tag_pushed: ['{tag}'],
-    imagetag_on_branch_pushed: ['{branch}-{timestamp}-{sha}', 'latest'],
-    watch_files: [], // Empty by default - means always build
-};
 // Configuration schemas
-const tagConfigSchema = z.union([z.literal(false), z.array(z.string())]);
+const tagConfigSchema = z.union([z.literal(null), z.array(z.string())]);
 const configSchema = z.object({
-    imagetag_on_tag_pushed: tagConfigSchema.optional().default(['{tag}']),
-    imagetag_on_branch_pushed: tagConfigSchema
+    imageTagsOnTagPushed: tagConfigSchema.optional().default(['{tag}']),
+    imageTagsOnBranchPushed: tagConfigSchema
         .optional()
         .default(['{branch}-{timestamp}-{sha}', 'latest']),
-    watch_files: z.array(z.string()).optional().default([]),
+    watchFiles: z.array(z.string()).optional().default([]),
 });
 // Generate build arguments with smart detection
 export async function generateBuildArgs(token, timezone, githubContext, workingDir) {
@@ -30,12 +23,12 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     // Load configuration from project file only
     const projectConfig = loadProjectConfig(workingDir);
     // Validate template variables in tag configuration
-    const availableVariables = ['tag', 'branch', 'sha', 'timestamp'];
-    if (Array.isArray(projectConfig.imagetag_on_tag_pushed)) {
-        validateTemplateVariables(projectConfig.imagetag_on_tag_pushed, availableVariables);
+    const availableVariables = Object.keys({});
+    if (projectConfig.imageTagsOnTagPushed !== null) {
+        validateTemplateVariables(projectConfig.imageTagsOnTagPushed, availableVariables);
     }
-    if (Array.isArray(projectConfig.imagetag_on_branch_pushed)) {
-        validateTemplateVariables(projectConfig.imagetag_on_branch_pushed, availableVariables);
+    if (projectConfig.imageTagsOnBranchPushed !== null) {
+        validateTemplateVariables(projectConfig.imageTagsOnBranchPushed, availableVariables);
     }
     // Get repository information
     const octokit = new Octokit({ auth: token });
@@ -48,18 +41,20 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     const compare = await getRepositoryChanges(octokit, repository, after);
     const changedFiles = compare.data.files || [];
     // Auto-detect Dockerfiles and determine images to build
-    const dockerfiles = await findDockerfiles(workingDir);
+    const dockerfiles = findDockerfiles(workingDir);
     if (dockerfiles.length === 0) {
         throw new Error('❌ No Dockerfiles found in the repository');
     }
-    const imagesToProcess = [];
+    const imageBuildSpecs = [];
     if (dockerfiles.length === 1) {
         // Single Dockerfile: check for image name comment first
         const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir);
-        imagesToProcess.push({
-            dockerfile: dockerfiles[0],
-            name: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
-            dockerfileConfig,
+        imageBuildSpecs.push({
+            dockerfilePath: dockerfiles[0],
+            imageName: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
+            imageTagsOnTagPushed: resolveConfig(dockerfileConfig.imageTagsOnTagPushed, projectConfig.imageTagsOnTagPushed),
+            imageTagsOnBranchPushed: resolveConfig(dockerfileConfig.imageTagsOnBranchPushed, projectConfig.imageTagsOnBranchPushed),
+            watchFiles: resolveConfig(dockerfileConfig.watchFiles, projectConfig.watchFiles),
         });
     }
     else {
@@ -72,198 +67,172 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
                     `   - Add comment: # image: my-image-name\n` +
                     `   - Create smart-docker-build.yml with explicit image configurations`);
             }
-            imagesToProcess.push({
-                dockerfile: dockerfilePath,
-                name: dockerfileConfig.imageName,
-                dockerfileConfig,
+            imageBuildSpecs.push({
+                dockerfilePath: dockerfilePath,
+                imageName: dockerfileConfig.imageName,
+                imageTagsOnTagPushed: resolveConfig(dockerfileConfig.imageTagsOnTagPushed, projectConfig.imageTagsOnTagPushed),
+                imageTagsOnBranchPushed: resolveConfig(dockerfileConfig.imageTagsOnBranchPushed, projectConfig.imageTagsOnBranchPushed),
+                watchFiles: resolveConfig(dockerfileConfig.watchFiles, projectConfig.watchFiles),
             });
         }
     }
     // Generate build arguments based on git event
     const outputs = [];
     const templateVariables = createTemplateVariables(branch, tag, timezone, after);
-    for (const image of imagesToProcess) {
-        // Get effective configuration (Dockerfile config overrides project config)
-        const effectiveTagPushedConfig = image.dockerfileConfig.imagetagOnTagPushed !== null
-            ? image.dockerfileConfig.imagetagOnTagPushed
-            : projectConfig.imagetag_on_tag_pushed;
-        const effectiveBranchPushedConfig = image.dockerfileConfig.imagetagOnBranchPushed !== null
-            ? image.dockerfileConfig.imagetagOnBranchPushed
-            : projectConfig.imagetag_on_branch_pushed;
+    for (const spec of imageBuildSpecs) {
         // Check build conditions
-        if (tag && Array.isArray(effectiveTagPushedConfig)) {
+        if (tag && spec.imageTagsOnTagPushed !== null) {
             // Tag push: validate tags don't exist, then build
-            await validateTagsBeforeBuild(effectiveTagPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
-            const tags = generateTagsFromTemplates(effectiveTagPushedConfig, templateVariables);
+            await ensureUniqueTag(spec.imageTagsOnTagPushed, templateVariables, octokit, spec.imageName);
+            const tags = generateTags(spec.imageTagsOnTagPushed, templateVariables);
             for (const tagName of tags) {
                 outputs.push({
-                    path: image.dockerfile,
-                    name: image.name,
-                    tag: tagName,
+                    dockerfilePath: spec.dockerfilePath,
+                    imageName: spec.imageName,
+                    imageTag: tagName,
                 });
             }
         }
-        else if (branch && Array.isArray(effectiveBranchPushedConfig)) {
-            // Branch push: check for changes using watch_files (Dockerfile config overrides project config)
-            const effectiveWatchFiles = image.dockerfileConfig.watchFiles !== null
-                ? image.dockerfileConfig.watchFiles
-                : projectConfig.watch_files;
-            const hasChanges = shouldBuildForChanges(image.dockerfile, effectiveWatchFiles, changedFiles);
-            if (hasChanges) {
+        else if (branch && spec.imageTagsOnBranchPushed !== null) {
+            // Branch push: check for changes using watchFiles
+            if (isBuildRequired(spec.watchFiles, changedFiles)) {
                 // Validate tags don't exist, then build
-                await validateTagsBeforeBuild(effectiveBranchPushedConfig, templateVariables, octokit, repository.owner.login, image.name);
-                const tags = generateTagsFromTemplates(effectiveBranchPushedConfig, templateVariables);
+                await ensureUniqueTag(spec.imageTagsOnBranchPushed, templateVariables, octokit, spec.imageName);
+                const tags = generateTags(spec.imageTagsOnBranchPushed, templateVariables);
                 for (const tagName of tags) {
                     outputs.push({
-                        path: image.dockerfile,
-                        name: image.name,
-                        tag: tagName,
+                        dockerfilePath: spec.dockerfilePath,
+                        imageName: spec.imageName,
+                        imageTag: tagName,
                     });
                 }
             }
         }
     }
-    return {
-        buildArgs: outputs,
-        validationErrors: [],
-    };
+    return outputs;
 }
 // Load project configuration
 export function loadProjectConfig(workingDir) {
-    const configPath = resolve(workingDir, 'smart-docker-build.yml');
-    if (existsSync(configPath)) {
+    const configPath = path.resolve(workingDir, 'smart-docker-build.yml');
+    if (fs.existsSync(configPath)) {
         try {
-            const configContent = readFileSync(configPath, 'utf8');
-            const rawConfig = load(configContent);
+            const configContent = fs.readFileSync(configPath, 'utf8');
+            const rawConfig = yaml.load(configContent);
             return configSchema.parse(rawConfig);
         }
         catch (error) {
             throw new Error(`❌ Failed to parse config file ${configPath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
-    return DEFAULT_CONFIG;
+    return {
+        imageTagsOnTagPushed: ['{tag}'],
+        imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+        watchFiles: [], // Empty by default - means always build
+    };
 }
 // Find all Dockerfiles in the project
-export async function findDockerfiles(workingDir) {
+export function findDockerfiles(workingDir) {
     const dockerfiles = [];
-    async function searchDir(dir) {
-        try {
-            const entries = await readdir(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = resolve(dir, entry.name);
-                if (entry.isDirectory()) {
-                    // Skip common directories we don't want to search
-                    if (!['node_modules', '.git', '.github', 'dist', 'build'].includes(entry.name)) {
-                        await searchDir(fullPath);
-                    }
-                }
-                else if (entry.name === 'Dockerfile' ||
-                    entry.name.startsWith('Dockerfile.')) {
-                    const relativePath = fullPath.replace(workingDir + '/', '');
-                    dockerfiles.push(relativePath);
+    function searchDir(dir) {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.resolve(dir, entry.name);
+            if (entry.isDirectory()) {
+                // Skip common directories we don't want to search
+                if (!['node_modules', '.git', '.github', 'dist', 'build'].includes(entry.name)) {
+                    searchDir(fullPath);
                 }
             }
-        }
-        catch (error) {
-            // Ignore directories we can't read
+            else if (entry.name === 'Dockerfile' ||
+                entry.name.startsWith('Dockerfile.')) {
+                const relativePath = fullPath.replace(workingDir + '/', '');
+                dockerfiles.push(relativePath);
+            }
         }
     }
-    await searchDir(workingDir);
+    searchDir(workingDir);
     return dockerfiles;
 }
+// Extract image configuration from Dockerfile comments
 export function extractDockerfileConfig(dockerfilePath, workingDir) {
-    const absolutePath = resolve(workingDir, dockerfilePath);
-    const result = {
-        imageName: null,
-        imagetagOnTagPushed: null,
-        imagetagOnBranchPushed: null,
-        watchFiles: null,
-    };
-    if (!existsSync(absolutePath)) {
+    const absolutePath = path.resolve(workingDir, dockerfilePath);
+    const result = {};
+    if (!fs.existsSync(absolutePath)) {
         return result;
     }
-    try {
-        const content = readFileSync(absolutePath, 'utf8');
-        const lines = content.split('\n');
-        for (const line of lines.slice(0, 10)) {
-            // Check first 10 lines
-            // Support both "Image:" and "image:" (case insensitive)
-            const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/);
-            if (imageMatch) {
-                result.imageName = imageMatch[1].trim();
-                continue;
+    const content = fs.readFileSync(absolutePath, 'utf8');
+    const lines = content.split('\n');
+    for (const line of lines.slice(0, 10)) {
+        // Check first 10 lines
+        // Support both "Image:" and "image:" (case insensitive)
+        const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/);
+        if (imageMatch) {
+            result.imageName = imageMatch[1].trim();
+            continue;
+        }
+        // imageTagsOnTagPushed configuration
+        const tagPushedMatch = line.match(/^#\s*imageTagsOnTagPushed:\s*(.+)$/);
+        if (tagPushedMatch) {
+            const value = tagPushedMatch[1].trim();
+            if (value === 'null') {
+                result.imageTagsOnTagPushed = null;
             }
-            // imagetag_on_tag_pushed configuration
-            const tagPushedMatch = line.match(/^#\s*imagetag_on_tag_pushed:\s*(.+)$/);
-            if (tagPushedMatch) {
-                const value = tagPushedMatch[1].trim();
-                if (value === 'false') {
-                    result.imagetagOnTagPushed = false;
-                }
-                else {
-                    try {
-                        // Parse as JSON array
-                        const parsed = JSON.parse(value);
-                        if (Array.isArray(parsed)) {
-                            result.imagetagOnTagPushed = parsed;
-                        }
-                    }
-                    catch {
-                        // If not valid JSON, treat as single string
-                        result.imagetagOnTagPushed = [value];
-                    }
-                }
-                continue;
-            }
-            // imagetag_on_branch_pushed configuration
-            const branchPushedMatch = line.match(/^#\s*imagetag_on_branch_pushed:\s*(.+)$/);
-            if (branchPushedMatch) {
-                const value = branchPushedMatch[1].trim();
-                if (value === 'false') {
-                    result.imagetagOnBranchPushed = false;
-                }
-                else {
-                    try {
-                        // Parse as JSON array
-                        const parsed = JSON.parse(value);
-                        if (Array.isArray(parsed)) {
-                            result.imagetagOnBranchPushed = parsed;
-                        }
-                    }
-                    catch {
-                        // If not valid JSON, treat as single string
-                        result.imagetagOnBranchPushed = [value];
-                    }
-                }
-                continue;
-            }
-            // watch_files configuration
-            const watchFilesMatch = line.match(/^#\s*watch_files:\s*(.+)$/);
-            if (watchFilesMatch) {
-                const value = watchFilesMatch[1].trim();
+            else {
+                let parsed;
                 try {
-                    // Parse as JSON array
-                    const parsed = JSON.parse(value);
-                    if (Array.isArray(parsed)) {
-                        result.watchFiles = parsed;
-                    }
+                    parsed = JSON.parse(value);
                 }
-                catch {
-                    // If not valid JSON, treat as single string
-                    result.watchFiles = [value];
+                catch (error) {
+                    throw new Error(`❌ Invalid JSON syntax for imageTagsOnTagPushed in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`);
                 }
-                continue;
+                if (!Array.isArray(parsed)) {
+                    throw new Error(`❌ imageTagsOnTagPushed must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`);
+                }
+                result.imageTagsOnTagPushed = parsed;
             }
+            continue;
+        }
+        // imageTagsOnBranchPushed configuration
+        const branchPushedMatch = line.match(/^#\s*imageTagsOnBranchPushed:\s*(.+)$/);
+        if (branchPushedMatch) {
+            const value = branchPushedMatch[1].trim();
+            if (value === 'null') {
+                result.imageTagsOnBranchPushed = null;
+            }
+            else {
+                let parsed;
+                try {
+                    parsed = JSON.parse(value);
+                }
+                catch (error) {
+                    throw new Error(`❌ Invalid JSON syntax for imageTagsOnBranchPushed in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`);
+                }
+                if (!Array.isArray(parsed)) {
+                    throw new Error(`❌ imageTagsOnBranchPushed must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`);
+                }
+                result.imageTagsOnBranchPushed = parsed;
+            }
+            continue;
+        }
+        // watchFiles configuration
+        const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/);
+        if (watchFilesMatch) {
+            const value = watchFilesMatch[1].trim();
+            let parsed;
+            try {
+                parsed = JSON.parse(value);
+            }
+            catch (error) {
+                throw new Error(`❌ Invalid JSON syntax for watchFiles in ${absolutePath}: "${value}". Expected valid JSON array like ["file1", "file2"].`);
+            }
+            if (!Array.isArray(parsed)) {
+                throw new Error(`❌ watchFiles must be an array in ${absolutePath}: "${value}". Expected JSON array like ["file1", "file2"], got ${typeof parsed}.`);
+            }
+            result.watchFiles = parsed;
+            continue;
         }
     }
-    catch (error) {
-        // Ignore read errors
-    }
     return result;
-}
-// Legacy function for backward compatibility
-export function extractImageNameFromDockerfile(dockerfilePath, workingDir) {
-    return extractDockerfileConfig(dockerfilePath, workingDir).imageName;
 }
 export async function getRepositoryChanges(octokit, repository, after) {
     return await octokit.repos.compareCommits({
@@ -274,34 +243,28 @@ export async function getRepositoryChanges(octokit, repository, after) {
     });
 }
 // Check if image tag exists in GitHub Container Registry
-export async function checkImageTagExists(octokit, owner, imageName, tag) {
-    try {
-        // GitHub Container Registry API
-        // Extract the package name from the full image name (e.g., "owner/my-app" -> "my-app")
-        const packageName = imageName.includes('/')
-            ? imageName.split('/').pop()
-            : imageName;
-        const response = await octokit.request('GET /user/packages/container/{package_name}/versions', {
-            package_name: packageName,
-        });
-        // Check if any version has the specified tag
-        return response.data.some((version) => version.metadata?.container?.tags?.includes(tag));
-    }
-    catch (error) {
-        // If we can't access the registry or package doesn't exist, assume tag doesn't exist
-        return false;
-    }
+export async function checkImageTagExists(octokit, imageName, tag) {
+    // GitHub Container Registry API
+    // Extract the package name from the full image name (e.g., "owner/my-app" -> "my-app")
+    const packageName = imageName.includes('/')
+        ? imageName.split('/').pop()
+        : imageName;
+    const response = await octokit.request('GET /user/packages/container/{package_name}/versions', {
+        package_name: packageName,
+    });
+    // Check if any version has the specified tag
+    return response.data.some((version) => version.metadata?.container?.tags?.includes(tag));
 }
-// Validate that image tags don't already exist in registry
-export async function validateTagsBeforeBuild(tags, templateVariables, octokit, owner, imageName) {
+// Ensure image tags are unique in registry
+export async function ensureUniqueTag(tags, templateVariables, octokit, imageName) {
     // Generate final tags from templates
-    const finalTags = generateTagsFromTemplates(tags, templateVariables);
+    const finalTags = generateTags(tags, templateVariables);
     // Check each tag for existence (skip 'latest' as it's meant to be overwritten)
     for (const tag of finalTags) {
         if (tag === 'latest') {
             continue; // Allow overwriting 'latest' tag
         }
-        const exists = await checkImageTagExists(octokit, owner, imageName, tag);
+        const exists = await checkImageTagExists(octokit, imageName, tag);
         if (exists) {
             throw new Error(`❌ Image tag '${imageName}:${tag}' already exists in registry\n` +
                 `💡 Solutions:\n` +
@@ -324,6 +287,65 @@ export function parseGitRef(ref) {
         throw new Error(`Unsupported ref: ${ref}`);
     }
     return { branch, tag };
+}
+export function isBuildRequired(watchFiles, changedFiles) {
+    // If no watchFiles specified or empty array, always build (default behavior)
+    if (watchFiles.length === 0) {
+        return true;
+    }
+    // Check if any changed file matches the watch patterns
+    return changedFiles.some((file) => watchFiles.some((pattern) => matchesPattern(file.filename, pattern)));
+}
+// Validate template variables exist
+export function validateTemplateVariables(templates, availableVariables) {
+    const variablePattern = /\{(\w+)\}/g;
+    const missingVariables = [];
+    for (const template of templates) {
+        let match;
+        while ((match = variablePattern.exec(template)) !== null) {
+            const variableName = match[1];
+            if (!availableVariables.includes(variableName)) {
+                if (!missingVariables.includes(variableName)) {
+                    missingVariables.push(variableName);
+                }
+            }
+        }
+    }
+    if (missingVariables.length > 0) {
+        throw new Error(`❌ Invalid template variables found: {${missingVariables.join('}, {')}}\n` +
+            `💡 Available variables: {${availableVariables.join('}, {')}}`);
+    }
+}
+// Generate tags from templates
+export function generateTags(templates, variables) {
+    return templates.map((template) => {
+        let result = template;
+        for (const [key, value] of Object.entries(variables)) {
+            result = result.replace(new RegExp(`{${key}}`, 'g'), value);
+        }
+        return result;
+    });
+}
+// Create template variables
+export function createTemplateVariables(branch, tag, timezone, sha) {
+    const variables = {
+        sha: sha.substring(0, 7), // Short SHA
+    };
+    if (branch) {
+        variables.branch = branch;
+    }
+    if (tag) {
+        variables.tag = tag;
+    }
+    if (timezone) {
+        const now = new Date();
+        variables.timestamp = format(toZonedTime(now, timezone), 'yyyyMMddHHmm');
+    }
+    return variables;
+}
+// Resolve configuration with fallback to default
+function resolveConfig(dockerfileValue, projectValue) {
+    return dockerfileValue !== undefined ? dockerfileValue : projectValue;
 }
 // Simple glob pattern matching (basic implementation)
 function matchesPattern(filename, pattern) {
@@ -364,74 +386,4 @@ function matchesPattern(filename, pattern) {
             (suffix === '*' || afterPrefix.endsWith(suffix)));
     }
     return filename === pattern;
-}
-export function shouldBuildForChanges(dockerfilePath, watchFiles, changedFiles) {
-    // If no watch_files specified or empty array, always build (default behavior)
-    if (!watchFiles || watchFiles.length === 0) {
-        return true;
-    }
-    // Check if any changed file matches the watch patterns
-    return changedFiles.some((file) => watchFiles.some((pattern) => matchesPattern(file.filename, pattern)));
-}
-export function generateImageTag(argObj, branch, timezone, after) {
-    const imageTags = [];
-    if (argObj.include_branch_name && branch) {
-        imageTags.push(branch);
-    }
-    if (argObj.include_timestamp) {
-        const now = new Date();
-        const formattedDate = format(toZonedTime(now, timezone), 'yyyyMMddHHmm');
-        imageTags.push(formattedDate);
-    }
-    if (argObj.include_commit_sha) {
-        imageTags.push(after);
-    }
-    return imageTags.join('-');
-}
-// Validate template variables exist
-export function validateTemplateVariables(templates, availableVariables) {
-    const variablePattern = /\{(\w+)\}/g;
-    const missingVariables = [];
-    for (const template of templates) {
-        let match;
-        while ((match = variablePattern.exec(template)) !== null) {
-            const variableName = match[1];
-            if (!availableVariables.includes(variableName)) {
-                if (!missingVariables.includes(variableName)) {
-                    missingVariables.push(variableName);
-                }
-            }
-        }
-    }
-    if (missingVariables.length > 0) {
-        throw new Error(`❌ Invalid template variables found: {${missingVariables.join('}, {')}}\n` +
-            `💡 Available variables: {${availableVariables.join('}, {')}}`);
-    }
-}
-// Generate tags from templates
-export function generateTagsFromTemplates(templates, variables) {
-    return templates.map((template) => {
-        let result = template;
-        for (const [key, value] of Object.entries(variables)) {
-            result = result.replace(new RegExp(`{${key}}`, 'g'), value);
-        }
-        return result;
-    });
-}
-// Create template variables
-export function createTemplateVariables(branch, tag, timezone, sha) {
-    const variables = {
-        sha: sha.substring(0, 7), // Short SHA
-    };
-    if (branch) {
-        variables.branch = branch;
-    }
-    if (tag) {
-        variables.tag = tag;
-    }
-    if (timezone) {
-        const now = new Date();
-        variables.timestamp = format(toZonedTime(now, timezone), 'yyyyMMddHHmm');
-    }
-    return variables;
 }

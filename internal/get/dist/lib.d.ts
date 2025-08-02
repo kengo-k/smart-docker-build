@@ -1,31 +1,31 @@
 import { Octokit } from '@octokit/rest';
-export type TagConfig = false | string[];
-export interface Config {
-    imagetag_on_tag_pushed: TagConfig;
-    imagetag_on_branch_pushed: TagConfig;
-    watch_files: string[];
+interface ProjectConfig {
+    imageTagsOnTagPushed: string[] | null;
+    imageTagsOnBranchPushed: string[] | null;
+    watchFiles: string[];
 }
-export interface ImageSpec {
-    dockerfile: string;
-    name: string;
+interface DockerfileConfig {
+    imageName?: string;
+    imageTagsOnTagPushed?: string[] | null;
+    imageTagsOnBranchPushed?: string[] | null;
+    watchFiles?: string[];
 }
-export interface BuildArg {
-    path: string;
-    name: string;
-    tag: string;
+interface ActionResult {
+    dockerfilePath: string;
+    imageName: string;
+    imageTag: string;
 }
-export interface GenerateBuildArgsResult {
-    buildArgs: BuildArg[];
-    validationErrors: string[];
+interface TemplateVariables {
+    tag?: string;
+    branch?: string;
+    sha?: string;
+    timestamp?: string;
 }
-export interface TemplateVariables {
-    [key: string]: string;
-}
-export interface GitRef {
+interface GitRef {
     branch: string | null;
     tag: string | null;
 }
-export interface GitHubContext {
+interface GitHubContext {
     payload: {
         repository?: {
             name: string;
@@ -37,17 +37,10 @@ export interface GitHubContext {
         ref?: string;
     };
 }
-export declare function generateBuildArgs(token: string, timezone: string, githubContext: GitHubContext, workingDir: string): Promise<GenerateBuildArgsResult>;
-export declare function loadProjectConfig(workingDir: string): Config;
-export declare function findDockerfiles(workingDir: string): Promise<string[]>;
-export interface DockerfileConfig {
-    imageName: string | null;
-    imagetagOnTagPushed: TagConfig | null;
-    imagetagOnBranchPushed: TagConfig | null;
-    watchFiles: string[] | null;
-}
+export declare function generateBuildArgs(token: string, timezone: string, githubContext: GitHubContext, workingDir: string): Promise<ActionResult[]>;
+export declare function loadProjectConfig(workingDir: string): ProjectConfig;
+export declare function findDockerfiles(workingDir: string): string[];
 export declare function extractDockerfileConfig(dockerfilePath: string, workingDir: string): DockerfileConfig;
-export declare function extractImageNameFromDockerfile(dockerfilePath: string, workingDir: string): string | null;
 export declare function getRepositoryChanges(octokit: Octokit, repository: {
     owner: {
         login: string;
@@ -68,17 +61,13 @@ export declare function getRepositoryChanges(octokit: Octokit, repository: {
     commits: import("@octokit/openapi-types").components["schemas"]["commit"][];
     files?: import("@octokit/openapi-types").components["schemas"]["diff-entry"][];
 }, 200>>;
-export declare function checkImageTagExists(octokit: Octokit, owner: string, imageName: string, tag: string): Promise<boolean>;
-export declare function validateTagsBeforeBuild(tags: string[], templateVariables: TemplateVariables, octokit: Octokit, owner: string, imageName: string): Promise<void>;
+export declare function checkImageTagExists(octokit: Octokit, imageName: string, tag: string): Promise<boolean>;
+export declare function ensureUniqueTag(tags: string[], templateVariables: TemplateVariables, octokit: Octokit, imageName: string): Promise<void>;
 export declare function parseGitRef(ref: string): GitRef;
-export declare function shouldBuildForChanges(dockerfilePath: string, watchFiles: string[] | null, changedFiles: {
+export declare function isBuildRequired(watchFiles: string[], changedFiles: {
     filename: string;
 }[]): boolean;
-export declare function generateImageTag(argObj: {
-    include_branch_name?: boolean;
-    include_timestamp?: boolean;
-    include_commit_sha?: boolean;
-}, branch: string | null, timezone: string, after: string): string;
 export declare function validateTemplateVariables(templates: string[], availableVariables: string[]): void;
-export declare function generateTagsFromTemplates(templates: string[], variables: TemplateVariables): string[];
+export declare function generateTags(templates: string[], variables: TemplateVariables): string[];
 export declare function createTemplateVariables(branch: string | null, tag: string | null, timezone: string, sha: string): TemplateVariables;
+export {};
