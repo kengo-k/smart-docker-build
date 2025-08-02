@@ -127,6 +127,8 @@ export async function generateBuildArgs(
   console.log('parseGitRef: ', ref)
   const { branch, tag } = parseGitRef(ref)
   console.log('branch: ', branch)
+  console.log('before: ', before)
+  console.log('after: ', after)
   console.log('tag: ', tag)
 
   // Get repository changes for change detection
