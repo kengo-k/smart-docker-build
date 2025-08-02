@@ -8,9 +8,9 @@ import {
   extractDockerfileConfig,
   extractImageNameFromDockerfile,
   generateTagsFromTemplates,
+  isBuildRequired,
   loadProjectConfig,
   parseGitRef,
-  shouldBuildForChanges,
   validateTagsBeforeBuild,
   validateTemplateVariables,
 } from './lib.js'
@@ -44,14 +44,14 @@ describe('parseGitRef', () => {
   })
 })
 
-describe('shouldBuildForChanges', () => {
+describe('isBuildRequired', () => {
   test('should return true when no watchFiles specified (default behavior)', () => {
     const changedFiles: { filename: string }[] = [
       { filename: 'src/app.js' },
       { filename: 'README.md' },
     ]
 
-    expect(shouldBuildForChanges('Dockerfile', [], changedFiles)).toBe(true)
+    expect(isBuildRequired([], changedFiles)).toBe(true)
   })
 
   test('should return true when changed file matches watch pattern', () => {
@@ -61,9 +61,7 @@ describe('shouldBuildForChanges', () => {
       { filename: 'README.md' },
     ]
 
-    expect(shouldBuildForChanges('Dockerfile', watchFiles, changedFiles)).toBe(
-      true,
-    )
+    expect(isBuildRequired(watchFiles, changedFiles)).toBe(true)
   })
 
   test('should return false when no changed files match watch patterns', () => {
@@ -73,9 +71,7 @@ describe('shouldBuildForChanges', () => {
       { filename: 'docs/guide.md' },
     ]
 
-    expect(shouldBuildForChanges('Dockerfile', watchFiles, changedFiles)).toBe(
-      false,
-    )
+    expect(isBuildRequired(watchFiles, changedFiles)).toBe(false)
   })
 
   test('should handle glob patterns correctly', () => {
@@ -83,26 +79,18 @@ describe('shouldBuildForChanges', () => {
 
     // Should match
     expect(
-      shouldBuildForChanges('Dockerfile', watchFiles, [
-        { filename: 'src/components/App.js' },
-      ]),
+      isBuildRequired(watchFiles, [{ filename: 'src/components/App.js' }]),
     ).toBe(true)
-    expect(
-      shouldBuildForChanges('Dockerfile', watchFiles, [
-        { filename: 'package.json' },
-      ]),
-    ).toBe(true)
+    expect(isBuildRequired(watchFiles, [{ filename: 'package.json' }])).toBe(
+      true,
+    )
 
     // Should not match
+    expect(isBuildRequired(watchFiles, [{ filename: 'src/styles.css' }])).toBe(
+      false,
+    )
     expect(
-      shouldBuildForChanges('Dockerfile', watchFiles, [
-        { filename: 'src/styles.css' },
-      ]),
-    ).toBe(false)
-    expect(
-      shouldBuildForChanges('Dockerfile', watchFiles, [
-        { filename: 'docs/package.json' },
-      ]),
+      isBuildRequired(watchFiles, [{ filename: 'docs/package.json' }]),
     ).toBe(false)
   })
 })

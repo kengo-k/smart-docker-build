@@ -229,13 +229,7 @@ export async function generateBuildArgs(
       }
     } else if (branch && image.imageTagsOnBranchPushed !== null) {
       // Branch push: check for changes using watchFiles
-      const hasChanges = shouldBuildForChanges(
-        image.dockerfilePath,
-        image.watchFiles,
-        changedFiles,
-      )
-
-      if (hasChanges) {
+      if (isBuildRequired(image.watchFiles, changedFiles)) {
         // Validate tags don't exist, then build
         await validateTagsBeforeBuild(
           image.imageTagsOnBranchPushed,
@@ -556,8 +550,7 @@ function matchesPattern(filename: string, pattern: string): boolean {
   return filename === pattern
 }
 
-export function shouldBuildForChanges(
-  dockerfilePath: string,
+export function isBuildRequired(
   watchFiles: string[],
   changedFiles: { filename: string }[],
 ): boolean {
