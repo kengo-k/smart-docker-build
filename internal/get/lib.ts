@@ -78,11 +78,6 @@ const configSchema = z.object({
   watchFiles: z.array(z.string()).optional().default([]),
 })
 
-// Resolve configuration with fallback to default
-function resolveConfig<T>(dockerfileValue: T | undefined, projectValue: T): T {
-  return dockerfileValue !== undefined ? dockerfileValue : projectValue
-}
-
 // Generate build arguments with smart detection
 export async function generateBuildArgs(
   token: string,
@@ -502,54 +497,6 @@ export function parseGitRef(ref: string): GitRef {
   return { branch, tag }
 }
 
-// Simple glob pattern matching (basic implementation)
-function matchesPattern(filename: string, pattern: string): boolean {
-  // Very basic implementation for common patterns
-  if (pattern === filename) return true
-
-  // Handle simple * pattern (matches anything)
-  if (pattern === '*') return true
-
-  // Handle *.extension pattern (only at root level, no subdirectories)
-  if (pattern.startsWith('*.')) {
-    const extension = pattern.slice(2)
-    return filename.endsWith('.' + extension) && !filename.includes('/')
-  }
-
-  // Handle src/**/*.js pattern (recursive directory match with extension)
-  if (pattern.includes('**/*')) {
-    const parts = pattern.split('**/')
-    const prefix = parts[0] // e.g., "src/"
-    const suffix = parts[1] // e.g., "*.js"
-
-    if (!filename.startsWith(prefix)) return false
-
-    if (suffix === '*') return true
-
-    // Handle *.extension after **
-    if (suffix.startsWith('*.')) {
-      const extension = suffix.slice(2)
-      return filename.endsWith('.' + extension)
-    }
-
-    return filename.endsWith(suffix)
-  }
-
-  // Handle src/* pattern (single directory match)
-  if (pattern.includes('/*') && !pattern.includes('**')) {
-    const prefix = pattern.split('/*')[0] + '/'
-    const suffix = pattern.split('/*')[1]
-    const afterPrefix = filename.slice(prefix.length)
-    return (
-      filename.startsWith(prefix) &&
-      !afterPrefix.includes('/') &&
-      (suffix === '*' || afterPrefix.endsWith(suffix))
-    )
-  }
-
-  return filename === pattern
-}
-
 export function isBuildRequired(
   watchFiles: string[],
   changedFiles: { filename: string }[],
@@ -632,4 +579,57 @@ export function createTemplateVariables(
   }
 
   return variables
+}
+
+// Resolve configuration with fallback to default
+function resolveConfig<T>(dockerfileValue: T | undefined, projectValue: T): T {
+  return dockerfileValue !== undefined ? dockerfileValue : projectValue
+}
+
+// Simple glob pattern matching (basic implementation)
+function matchesPattern(filename: string, pattern: string): boolean {
+  // Very basic implementation for common patterns
+  if (pattern === filename) return true
+
+  // Handle simple * pattern (matches anything)
+  if (pattern === '*') return true
+
+  // Handle *.extension pattern (only at root level, no subdirectories)
+  if (pattern.startsWith('*.')) {
+    const extension = pattern.slice(2)
+    return filename.endsWith('.' + extension) && !filename.includes('/')
+  }
+
+  // Handle src/**/*.js pattern (recursive directory match with extension)
+  if (pattern.includes('**/*')) {
+    const parts = pattern.split('**/')
+    const prefix = parts[0] // e.g., "src/"
+    const suffix = parts[1] // e.g., "*.js"
+
+    if (!filename.startsWith(prefix)) return false
+
+    if (suffix === '*') return true
+
+    // Handle *.extension after **
+    if (suffix.startsWith('*.')) {
+      const extension = suffix.slice(2)
+      return filename.endsWith('.' + extension)
+    }
+
+    return filename.endsWith(suffix)
+  }
+
+  // Handle src/* pattern (single directory match)
+  if (pattern.includes('/*') && !pattern.includes('**')) {
+    const prefix = pattern.split('/*')[0] + '/'
+    const suffix = pattern.split('/*')[1]
+    const afterPrefix = filename.slice(prefix.length)
+    return (
+      filename.startsWith(prefix) &&
+      !afterPrefix.includes('/') &&
+      (suffix === '*' || afterPrefix.endsWith(suffix))
+    )
+  }
+
+  return filename === pattern
 }
