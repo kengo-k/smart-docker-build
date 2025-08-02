@@ -318,82 +318,96 @@ export function extractDockerfileConfig(
     return result
   }
 
-  try {
-    const content = fs.readFileSync(absolutePath, 'utf8')
-    const lines = content.split('\n')
+  const content = fs.readFileSync(absolutePath, 'utf8')
+  const lines = content.split('\n')
 
-    for (const line of lines.slice(0, 10)) {
-      // Check first 10 lines
-      // Support both "Image:" and "image:" (case insensitive)
-      const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
-      if (imageMatch) {
-        result.imageName = imageMatch[1].trim()
-        continue
-      }
-
-      // imageTagsOnTagPushed configuration
-      const tagPushedMatch = line.match(/^#\s*imageTagsOnTagPushed:\s*(.+)$/)
-      if (tagPushedMatch) {
-        const value = tagPushedMatch[1].trim()
-        if (value === 'null') {
-          result.imageTagsOnTagPushed = null
-        } else {
-          try {
-            // Parse as JSON array
-            const parsed = JSON.parse(value)
-            if (Array.isArray(parsed)) {
-              result.imageTagsOnTagPushed = parsed
-            }
-          } catch {
-            // If not valid JSON, treat as single string
-            result.imageTagsOnTagPushed = [value]
-          }
-        }
-        continue
-      }
-
-      // imageTagsOnBranchPushed configuration
-      const branchPushedMatch = line.match(
-        /^#\s*imageTagsOnBranchPushed:\s*(.+)$/,
-      )
-      if (branchPushedMatch) {
-        const value = branchPushedMatch[1].trim()
-        if (value === 'null') {
-          result.imageTagsOnBranchPushed = null
-        } else {
-          try {
-            // Parse as JSON array
-            const parsed = JSON.parse(value)
-            if (Array.isArray(parsed)) {
-              result.imageTagsOnBranchPushed = parsed
-            }
-          } catch {
-            // If not valid JSON, treat as single string
-            result.imageTagsOnBranchPushed = [value]
-          }
-        }
-        continue
-      }
-
-      // watchFiles configuration
-      const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/)
-      if (watchFilesMatch) {
-        const value = watchFilesMatch[1].trim()
-        try {
-          // Parse as JSON array
-          const parsed = JSON.parse(value)
-          if (Array.isArray(parsed)) {
-            result.watchFiles = parsed
-          }
-        } catch {
-          // If not valid JSON, treat as single string
-          result.watchFiles = [value]
-        }
-        continue
-      }
+  for (const line of lines.slice(0, 10)) {
+    // Check first 10 lines
+    // Support both "Image:" and "image:" (case insensitive)
+    const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
+    if (imageMatch) {
+      result.imageName = imageMatch[1].trim()
+      continue
     }
-  } catch (error) {
-    // Ignore read errors
+
+    // imageTagsOnTagPushed configuration
+    const tagPushedMatch = line.match(/^#\s*imageTagsOnTagPushed:\s*(.+)$/)
+    if (tagPushedMatch) {
+      const value = tagPushedMatch[1].trim()
+      if (value === 'null') {
+        result.imageTagsOnTagPushed = null
+      } else {
+        let parsed
+        try {
+          parsed = JSON.parse(value)
+        } catch (error) {
+          throw new Error(
+            `❌ Invalid JSON syntax for imageTagsOnTagPushed in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`,
+          )
+        }
+
+        if (!Array.isArray(parsed)) {
+          throw new Error(
+            `❌ imageTagsOnTagPushed must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`,
+          )
+        }
+
+        result.imageTagsOnTagPushed = parsed
+      }
+      continue
+    }
+
+    // imageTagsOnBranchPushed configuration
+    const branchPushedMatch = line.match(
+      /^#\s*imageTagsOnBranchPushed:\s*(.+)$/,
+    )
+    if (branchPushedMatch) {
+      const value = branchPushedMatch[1].trim()
+      if (value === 'null') {
+        result.imageTagsOnBranchPushed = null
+      } else {
+        let parsed
+        try {
+          parsed = JSON.parse(value)
+        } catch (error) {
+          throw new Error(
+            `❌ Invalid JSON syntax for imageTagsOnBranchPushed in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`,
+          )
+        }
+
+        if (!Array.isArray(parsed)) {
+          throw new Error(
+            `❌ imageTagsOnBranchPushed must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`,
+          )
+        }
+
+        result.imageTagsOnBranchPushed = parsed
+      }
+      continue
+    }
+
+    // watchFiles configuration
+    const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/)
+    if (watchFilesMatch) {
+      const value = watchFilesMatch[1].trim()
+      let parsed
+      try {
+        parsed = JSON.parse(value)
+      } catch (error) {
+        throw new Error(
+          `❌ Invalid JSON syntax for watchFiles in ${absolutePath}: "${value}". Expected valid JSON array like ["file1", "file2"].`,
+        )
+      }
+
+      if (!Array.isArray(parsed)) {
+        throw new Error(
+          `❌ watchFiles must be an array in ${absolutePath}: "${value}". Expected JSON array like ["file1", "file2"], got ${typeof parsed}.`,
+        )
+      }
+
+      result.watchFiles = parsed
+      continue
+    }
   }
 
   return result

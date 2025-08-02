@@ -191,19 +191,18 @@ FROM node:18`,
     expect(config.imageTagsOnBranchPushed).toEqual(['{branch}-{sha}'])
   })
 
-  test('should handle single string as array', () => {
+  test('should throw error for invalid JSON format', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(
       dockerfilePath,
       `# image: my-app
 # imageTagsOnTagPushed: production
-# imageTagsOnBranchPushed: dev-latest
 FROM node:18`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath, testDir)
-    expect(config.imageTagsOnTagPushed).toEqual(['production'])
-    expect(config.imageTagsOnBranchPushed).toEqual(['dev-latest'])
+    expect(() => {
+      extractDockerfileConfig(dockerfilePath, testDir)
+    }).toThrow('Invalid JSON syntax for imageTagsOnTagPushed')
   })
 
   test('should extract watchFiles configuration', () => {
@@ -224,7 +223,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
     expect(config.watchFiles).toEqual(['Dockerfile', '.devcontainer/**/*'])
   })
 
-  test('should handle single watchFiles string', () => {
+  test('should throw error for invalid watchFiles format', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(
       dockerfilePath,
@@ -233,8 +232,9 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu`,
 FROM node:18`,
     )
 
-    const config = extractDockerfileConfig(dockerfilePath, testDir)
-    expect(config.watchFiles).toEqual(['Dockerfile'])
+    expect(() => {
+      extractDockerfileConfig(dockerfilePath, testDir)
+    }).toThrow('Invalid JSON syntax for watchFiles')
   })
 })
 
