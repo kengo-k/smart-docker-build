@@ -7,7 +7,6 @@ import {
   createTemplateVariables,
   ensureUniqueTag,
   extractDockerfileConfig,
-  extractImageNameFromDockerfile,
   generateTags,
   isBuildRequired,
   loadProjectConfig,
@@ -122,16 +121,6 @@ watchFiles: ["package.json", "src/**/*"]
       imageTagsOnBranchPushed: ['{branch}-{sha}', 'latest'],
       watchFiles: ['package.json', 'src/**/*'],
     })
-  })
-})
-
-describe('extractImageNameFromDockerfile', () => {
-  test('should return undefined for non-existent file', () => {
-    const name = extractImageNameFromDockerfile(
-      '/nonexistent/Dockerfile',
-      '/tmp',
-    )
-    expect(name).toBeUndefined()
   })
 })
 

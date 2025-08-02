@@ -31,7 +31,10 @@ interface BuildArg {
 }
 
 interface TemplateVariables {
-  [key: string]: string
+  tag?: string
+  branch?: string
+  sha?: string
+  timestamp?: string
 }
 
 interface GitRef {
@@ -300,7 +303,6 @@ export function findDockerfiles(workingDir: string): string[] {
 }
 
 // Extract image configuration from Dockerfile comments
-
 export function extractDockerfileConfig(
   dockerfilePath: string,
   workingDir: string,
@@ -392,14 +394,6 @@ export function extractDockerfileConfig(
   }
 
   return result
-}
-
-// Legacy function for backward compatibility
-export function extractImageNameFromDockerfile(
-  dockerfilePath: string,
-  workingDir: string,
-): string | undefined {
-  return extractDockerfileConfig(dockerfilePath, workingDir).imageName
 }
 
 export async function getRepositoryChanges(
