@@ -108,7 +108,9 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
         }
         else if (branch && spec.imageTagsOnBranchPushed !== null) {
             // Branch push: check for changes using watchFiles
-            if (isBuildRequired(spec.watchFiles, changedFiles)) {
+            const buildRequired = isBuildRequired(spec.watchFiles, changedFiles);
+            console.log(`${spec.dockerfilePath}: ${buildRequired}, watchFiles: ${spec.watchFiles}`);
+            if (buildRequired) {
                 // Validate tags don't exist, then build
                 await ensureUniqueTag(spec.imageTagsOnBranchPushed, templateVariables, octokit, spec.imageName);
                 const tags = generateTags(spec.imageTagsOnBranchPushed, templateVariables);
