@@ -60,9 +60,11 @@ interface GitHubContext {
 }
 
 interface ImageToProcess {
-  dockerfile: string
-  name: string
-  dockerfileConfig: DockerfileConfig
+  dockerfilePath: string
+  imageName: string
+  imageTagsOnTagPushed: string[] | null
+  imageTagsOnBranchPushed: string[] | null
+  watchFiles: string[]
 }
 
 // Configuration schemas
@@ -75,6 +77,11 @@ const configSchema = z.object({
     .default(['{branch}-{timestamp}-{sha}', 'latest']),
   watchFiles: z.array(z.string()).optional().default([]),
 })
+
+// Resolve configuration with fallback to default
+function resolveConfig<T>(dockerfileValue: T | undefined, projectValue: T): T {
+  return dockerfileValue !== undefined ? dockerfileValue : projectValue
+}
 
 // Generate build arguments with smart detection
 export async function generateBuildArgs(
@@ -136,9 +143,20 @@ export async function generateBuildArgs(
     const dockerfileConfig = extractDockerfileConfig(dockerfiles[0], workingDir)
 
     imagesToProcess.push({
-      dockerfile: dockerfiles[0],
-      name: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
-      dockerfileConfig,
+      dockerfilePath: dockerfiles[0],
+      imageName: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
+      imageTagsOnTagPushed: resolveConfig(
+        dockerfileConfig.imageTagsOnTagPushed,
+        projectConfig.imageTagsOnTagPushed,
+      ),
+      imageTagsOnBranchPushed: resolveConfig(
+        dockerfileConfig.imageTagsOnBranchPushed,
+        projectConfig.imageTagsOnBranchPushed,
+      ),
+      watchFiles: resolveConfig(
+        dockerfileConfig.watchFiles,
+        projectConfig.watchFiles,
+      ),
     })
   } else {
     // Multiple Dockerfiles: require image names
@@ -158,9 +176,20 @@ export async function generateBuildArgs(
       }
 
       imagesToProcess.push({
-        dockerfile: dockerfilePath,
-        name: dockerfileConfig.imageName!,
-        dockerfileConfig,
+        dockerfilePath: dockerfilePath,
+        imageName: dockerfileConfig.imageName!,
+        imageTagsOnTagPushed: resolveConfig(
+          dockerfileConfig.imageTagsOnTagPushed,
+          projectConfig.imageTagsOnTagPushed,
+        ),
+        imageTagsOnBranchPushed: resolveConfig(
+          dockerfileConfig.imageTagsOnBranchPushed,
+          projectConfig.imageTagsOnBranchPushed,
+        ),
+        watchFiles: resolveConfig(
+          dockerfileConfig.watchFiles,
+          projectConfig.watchFiles,
+        ),
       })
     }
   }
@@ -175,72 +204,56 @@ export async function generateBuildArgs(
   )
 
   for (const image of imagesToProcess) {
-    // Get effective configuration (Dockerfile config overrides project config)
-    const effectiveTagPushedConfig =
-      image.dockerfileConfig.imageTagsOnTagPushed !== undefined
-        ? image.dockerfileConfig.imageTagsOnTagPushed
-        : projectConfig.imageTagsOnTagPushed
-
-    const effectiveBranchPushedConfig =
-      image.dockerfileConfig.imageTagsOnBranchPushed !== undefined
-        ? image.dockerfileConfig.imageTagsOnBranchPushed
-        : projectConfig.imageTagsOnBranchPushed
-
     // Check build conditions
-    if (tag && effectiveTagPushedConfig !== null) {
+    if (tag && image.imageTagsOnTagPushed !== null) {
       // Tag push: validate tags don't exist, then build
       await validateTagsBeforeBuild(
-        effectiveTagPushedConfig,
+        image.imageTagsOnTagPushed,
         templateVariables,
         octokit,
         repository.owner.login,
-        image.name,
+        image.imageName,
       )
 
       const tags = generateTagsFromTemplates(
-        effectiveTagPushedConfig,
+        image.imageTagsOnTagPushed,
         templateVariables,
       )
 
       for (const tagName of tags) {
         outputs.push({
-          dockerfilePath: image.dockerfile,
-          imageName: image.name,
+          dockerfilePath: image.dockerfilePath,
+          imageName: image.imageName,
           imageTag: tagName,
         })
       }
-    } else if (branch && effectiveBranchPushedConfig !== null) {
-      // Branch push: check for changes using watchFiles (Dockerfile config overrides project config)
-      const effectiveWatchFiles =
-        image.dockerfileConfig.watchFiles !== undefined
-          ? image.dockerfileConfig.watchFiles
-          : projectConfig.watchFiles
-
+    } else if (branch && image.imageTagsOnBranchPushed !== null) {
+      // Branch push: check for changes using watchFiles
       const hasChanges = shouldBuildForChanges(
-        image.dockerfile,
-        effectiveWatchFiles,
+        image.dockerfilePath,
+        image.watchFiles,
         changedFiles,
       )
 
       if (hasChanges) {
         // Validate tags don't exist, then build
         await validateTagsBeforeBuild(
-          effectiveBranchPushedConfig,
+          image.imageTagsOnBranchPushed,
           templateVariables,
           octokit,
           repository.owner.login,
-          image.name,
+          image.imageName,
         )
 
         const tags = generateTagsFromTemplates(
-          effectiveBranchPushedConfig,
+          image.imageTagsOnBranchPushed,
           templateVariables,
         )
 
         for (const tagName of tags) {
           outputs.push({
-            dockerfilePath: image.dockerfile,
-            imageName: image.name,
+            dockerfilePath: image.dockerfilePath,
+            imageName: image.imageName,
             imageTag: tagName,
           })
         }
@@ -545,11 +558,11 @@ function matchesPattern(filename: string, pattern: string): boolean {
 
 export function shouldBuildForChanges(
   dockerfilePath: string,
-  watchFiles: string[] | null,
+  watchFiles: string[],
   changedFiles: { filename: string }[],
 ): boolean {
   // If no watchFiles specified or empty array, always build (default behavior)
-  if (!watchFiles || watchFiles.length === 0) {
+  if (watchFiles.length === 0) {
     return true
   }
 

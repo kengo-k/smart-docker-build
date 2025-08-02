@@ -51,7 +51,6 @@ describe('shouldBuildForChanges', () => {
       { filename: 'README.md' },
     ]
 
-    expect(shouldBuildForChanges('Dockerfile', null, changedFiles)).toBe(true)
     expect(shouldBuildForChanges('Dockerfile', [], changedFiles)).toBe(true)
   })
 
