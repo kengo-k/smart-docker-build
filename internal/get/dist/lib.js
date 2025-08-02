@@ -51,6 +51,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     // Get repository changes for change detection
     const compare = await getRepositoryChanges(octokit, repository, before, after);
     const changedFiles = compare.data.files || [];
+    console.log('changedFiles: ', changedFiles);
     // Auto-detect Dockerfiles and determine images to build
     const dockerfiles = findDockerfiles(workingDir);
     console.log('dockerfiles: ', dockerfiles);
@@ -278,11 +279,7 @@ export async function ensureUniqueTag(tags, templateVariables, octokit, imageNam
         }
         const exists = await checkImageTagExists(octokit, imageName, tag);
         if (exists) {
-            throw new Error(`❌ Image tag '${imageName}:${tag}' already exists in registry\n` +
-                `💡 Solutions:\n` +
-                `   - Update tag in Dockerfile comment\n` +
-                `   - Use unique variables like {timestamp} or {sha}\n` +
-                `   - Consider using force_overwrite flag if intentional overwrite is needed`);
+            throw new Error(`Image tag '${imageName}:${tag}' already exists in registry`);
         }
     }
 }

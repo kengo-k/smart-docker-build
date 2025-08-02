@@ -134,6 +134,7 @@ export async function generateBuildArgs(
   // Get repository changes for change detection
   const compare = await getRepositoryChanges(octokit, repository, before, after)
   const changedFiles = compare.data.files || []
+  console.log('changedFiles: ', changedFiles)
 
   // Auto-detect Dockerfiles and determine images to build
   const dockerfiles = findDockerfiles(workingDir)
