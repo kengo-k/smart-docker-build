@@ -136,12 +136,12 @@ export async function generateBuildArgs(
   const changedFiles = compare.data.files || []
   console.log(
     'changedFiles: ',
-    changedFiles.map((file) => file.filename),
+    JSON.stringify(changedFiles.map((file) => file.filename)),
   )
 
   // Auto-detect Dockerfiles and determine images to build
   const dockerfiles = findDockerfiles(workingDir)
-  console.log('dockerfiles: ', dockerfiles)
+  console.log('dockerfiles: ', JSON.stringify(dockerfiles))
 
   if (dockerfiles.length === 0) {
     throw new Error('❌ No Dockerfiles found in the repository')
