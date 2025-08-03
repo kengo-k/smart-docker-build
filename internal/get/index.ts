@@ -4,7 +4,6 @@ import github from '@actions/github'
 import { generateBuildArgs } from './lib.js'
 
 async function main(): Promise<void> {
-  console.log('⭐ js action `internal/get` started')
   const token = getInput('token')
   const timezone = getInput('timezone')
 

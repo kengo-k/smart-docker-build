@@ -5,6 +5,35 @@ import * as yaml from 'js-yaml';
 import * as path from 'path';
 import { z } from 'zod';
 import { Octokit } from '@octokit/rest';
+function debugLog(message, obj) {
+    if (obj !== undefined) {
+        let jsonOutput;
+        try {
+            if (typeof obj === 'string') {
+                jsonOutput = JSON.stringify(obj);
+            }
+            else if (typeof obj === 'number' || typeof obj === 'boolean') {
+                jsonOutput = JSON.stringify(obj);
+            }
+            else if (obj === null) {
+                jsonOutput = 'null';
+            }
+            else if (obj === undefined) {
+                jsonOutput = 'null';
+            }
+            else {
+                jsonOutput = JSON.stringify(obj, null, 0);
+            }
+        }
+        catch (error) {
+            jsonOutput = '"[Circular Reference or Invalid JSON]"';
+        }
+        console.log(`[info] ${message}`, jsonOutput);
+    }
+    else {
+        console.log(`[info] ${message}`);
+    }
+}
 // Configuration schemas
 const tagConfigSchema = z.union([z.literal(null), z.array(z.string())]);
 const configSchema = z.object({
@@ -22,7 +51,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     }
     // Load configuration from project file only
     const projectConfig = loadProjectConfig(workingDir);
-    console.log('load projectConfig: ', projectConfig);
+    debugLog('load projectConfig: ', projectConfig);
     // Validate template variables in tag configuration
     const availableVariables = [
         'tag',
@@ -42,21 +71,21 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     if (!repository || !before || !after || !ref) {
         throw new Error('Missing required GitHub context information (repository, before, after, ref)');
     }
-    console.log('parseGitRef: ', ref);
+    debugLog('parseGitRef: ', ref);
     const { branch, tag } = parseGitRef(ref);
-    console.log('branch: ', branch);
-    console.log('before: ', before);
-    console.log('after: ', after);
-    console.log('tag: ', tag);
+    debugLog('branch: ', branch);
+    debugLog('before: ', before);
+    debugLog('after: ', after);
+    debugLog('tag: ', tag);
     // Get repository changes for change detection
     const compare = await getRepositoryChanges(octokit, repository, before, after);
     const changedFiles = compare.data.files || [];
-    console.log('changedFiles: ', JSON.stringify(changedFiles.map((file) => file.filename)));
+    debugLog('changedFiles: ', changedFiles.map((file) => file.filename));
     // Auto-detect Dockerfiles and determine images to build
     const dockerfiles = findDockerfiles(workingDir);
-    console.log('dockerfiles: ', JSON.stringify(dockerfiles));
+    debugLog('dockerfiles: ', dockerfiles);
     if (dockerfiles.length === 0) {
-        throw new Error('❌ No Dockerfiles found in the repository');
+        throw new Error('No Dockerfiles found in the repository');
     }
     const imageBuildSpecs = [];
     if (dockerfiles.length === 1) {
@@ -109,7 +138,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
         else if (branch && spec.imageTagsOnBranchPushed !== null) {
             // Branch push: check for changes using watchFiles
             const buildRequired = isBuildRequired(spec.watchFiles, changedFiles);
-            console.log(`${spec.dockerfilePath}: ${buildRequired}, watchFiles: ${spec.watchFiles}`);
+            debugLog(`build required for ${spec.dockerfilePath}?`, buildRequired);
             if (buildRequired) {
                 // Validate tags don't exist, then build
                 await ensureUniqueTag(spec.imageTagsOnBranchPushed, templateVariables, octokit, spec.imageName);
@@ -124,7 +153,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
             }
         }
     }
-    console.log('generated build arguments: ', outputs);
+    debugLog('generated build arguments: ', outputs);
     return outputs;
 }
 // Load project configuration
