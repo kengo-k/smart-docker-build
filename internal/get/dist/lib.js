@@ -328,6 +328,7 @@ export async function ensureUniqueTag(tags, templateVariables, octokit, imageNam
             continue; // Allow overwriting 'latest' tag
         }
         const exists = await checkImageTagExists(octokit, imageName, tag);
+        debugLog('tag exists?: ', { imageName, tag, exists });
         if (exists) {
             throw new Error(`Image tag '${imageName}:${tag}' already exists in registry`);
         }
