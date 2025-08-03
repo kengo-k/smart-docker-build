@@ -46057,7 +46057,7 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     }
     // Load configuration from project file only
     const projectConfig = loadProjectConfig(workingDir);
-    debugLog('load projectConfig: ', projectConfig);
+    debugLog('project config: ', projectConfig);
     // Validate template variables in tag configuration
     const availableVariables = [
         'tag',
@@ -46077,7 +46077,7 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     if (!repository || !before || !after || !ref) {
         throw new Error('Missing required GitHub context information (repository, before, after, ref)');
     }
-    debugLog('parseGitRef: ', ref);
+    debugLog('gitref: ', ref);
     const { branch, tag } = parseGitRef(ref);
     debugLog('branch: ', branch);
     debugLog('before: ', before);
@@ -46144,7 +46144,10 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
         else if (branch && spec.imageTagsOnBranchPushed !== null) {
             // Branch push: check for changes using watchFiles
             const buildRequired = isBuildRequired(spec.watchFiles, changedFiles);
-            debugLog(`build required for ${spec.dockerfilePath}?`, buildRequired);
+            debugLog('build required?: ', {
+                path: spec.dockerfilePath,
+                required: buildRequired,
+            });
             if (buildRequired) {
                 // Validate tags don't exist, then build
                 await ensureUniqueTag(spec.imageTagsOnBranchPushed, templateVariables, octokit, spec.imageName);
@@ -46159,7 +46162,22 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
             }
         }
     }
-    debugLog('generated build arguments: ', outputs);
+    // Aggregate outputs by dockerfilePath for better readability
+    const aggregatedOutputs = outputs.reduce((acc, output) => {
+        const existing = acc.find((item) => item.dockerfilePath === output.dockerfilePath);
+        if (existing) {
+            existing.imageTags.push(output.imageTag);
+        }
+        else {
+            acc.push({
+                dockerfilePath: output.dockerfilePath,
+                imageName: output.imageName,
+                imageTags: [output.imageTag],
+            });
+        }
+        return acc;
+    }, []);
+    debugLog('generated build arguments: ', aggregatedOutputs);
     return outputs;
 }
 // Load project configuration

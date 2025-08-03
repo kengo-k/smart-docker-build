@@ -116,7 +116,7 @@ export async function generateBuildArgs(
 
   // Load configuration from project file only
   const projectConfig = loadProjectConfig(workingDir)
-  debugLog('load projectConfig: ', projectConfig)
+  debugLog('project config: ', projectConfig)
 
   // Validate template variables in tag configuration
   const availableVariables: (keyof TemplateVariables)[] = [
@@ -148,7 +148,7 @@ export async function generateBuildArgs(
     )
   }
 
-  debugLog('parseGitRef: ', ref)
+  debugLog('gitref: ', ref)
   const { branch, tag } = parseGitRef(ref)
   debugLog('branch: ', branch)
   debugLog('before: ', before)
@@ -261,7 +261,10 @@ export async function generateBuildArgs(
     } else if (branch && spec.imageTagsOnBranchPushed !== null) {
       // Branch push: check for changes using watchFiles
       const buildRequired = isBuildRequired(spec.watchFiles, changedFiles)
-      debugLog(`build required for ${spec.dockerfilePath}?`, buildRequired)
+      debugLog('build required?: ', {
+        path: spec.dockerfilePath,
+        required: buildRequired,
+      })
       if (buildRequired) {
         // Validate tags don't exist, then build
         await ensureUniqueTag(
@@ -286,7 +289,32 @@ export async function generateBuildArgs(
       }
     }
   }
-  debugLog('generated build arguments: ', outputs)
+
+  // Aggregate outputs by dockerfilePath for better readability
+  const aggregatedOutputs = outputs.reduce(
+    (acc, output) => {
+      const existing = acc.find(
+        (item) => item.dockerfilePath === output.dockerfilePath,
+      )
+      if (existing) {
+        existing.imageTags.push(output.imageTag)
+      } else {
+        acc.push({
+          dockerfilePath: output.dockerfilePath,
+          imageName: output.imageName,
+          imageTags: [output.imageTag],
+        })
+      }
+      return acc
+    },
+    [] as Array<{
+      dockerfilePath: string
+      imageName: string
+      imageTags: string[]
+    }>,
+  )
+
+  debugLog('generated build arguments: ', aggregatedOutputs)
   return outputs
 }
 
