@@ -29,7 +29,7 @@ runs:
   steps:
     - name: 'Set up Docker Buildx'
       uses: docker/setup-buildx-action@v3
-      if: inputs.cache_enabled == 'true'
+      if: inputs.cache_enabled == 'true' && inputs.use_dryrun != 'true'
 
     - name: 'Get docker build args'
       id: js_action
@@ -42,7 +42,7 @@ runs:
         INPUT_CACHE_TYPE: ${{ inputs.cache_type }}
 
     - name: Login to ghcr
-      if: steps.js_action.outputs.has_builds == 'true'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -50,11 +50,11 @@ runs:
         password: ${{ inputs.token }}
 
     - name: Checkout latest commit
-      if: steps.js_action.outputs.has_builds == 'true'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true'
       uses: actions/checkout@v4
 
     - name: 'Build and Push Docker Images'
-      if: steps.js_action.outputs.has_builds == 'true'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true'
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'
@@ -78,22 +78,32 @@ runs:
             build_cmd="docker build"
           fi
 
-          if [ "${{ inputs.use_dryrun }}" = "true" ]; then
-            echo "Dry run mode: Skipping build and push for ghcr.io/${{ github.actor }}/$name:$tag"
-            success_count=$((success_count + 1))
-          else
-            if eval "$build_cmd $cache_from $cache_to -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path)"; then
-              if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
-                success_count=$((success_count + 1))
-              else
-                failure_count=$((failure_count + 1))
-              fi
+          if eval "$build_cmd $cache_from $cache_to -t ghcr.io/${{ github.actor }}/$name:$tag -f $path $(dirname $path)"; then
+            if docker push ghcr.io/${{ github.actor }}/$name:$tag; then
+              success_count=$((success_count + 1))
             else
               failure_count=$((failure_count + 1))
             fi
+          else
+            failure_count=$((failure_count + 1))
           fi
         done
 
         if [ $failure_count -gt 0 ] && [ $success_count -eq 0 ]; then
           exit 1
         fi
+
+    - name: 'Dry Run Summary'
+      if: inputs.use_dryrun == 'true' && steps.js_action.outputs.has_builds == 'true'
+      shell: bash
+      run: |
+        build_args='${{ steps.js_action.outputs.build_args }}'
+        length=$(echo "$build_args" | jq '. | length')
+
+        echo "Dry run mode enabled - would build $length image(s):"
+        for ((i=0; i<length; i++)); do
+          element=$(echo "$build_args" | jq -c ".[$i]")
+          name=$(echo "$element" | jq -r '.imageName')
+          tag=$(echo "$element" | jq -r '.imageTag')
+          echo "  - ghcr.io/${{ github.actor }}/$name:$tag"
+        done
