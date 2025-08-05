@@ -320,14 +320,6 @@ export async function checkImageTagExists(octokit, imageName, tag) {
         return response.data.some((version) => version.metadata?.container?.tags?.includes(tag));
     }
     catch (error) {
-        debugLog('checkImageTagExists error: ', {
-            imageName,
-            tag,
-            packageName,
-            status: error.status,
-            message: error.message,
-            response: error.response?.data,
-        });
         if (error.status === 404) {
             return false; // Package doesn't exist = tag doesn't exist
         }
