@@ -1,6 +1,6 @@
 # Smart Docker Build
 
-[![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/test.yml)
+[![Tests](https://github.com/kengo-k/smart-docker-build/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/unit-test.yml)
 [![Format](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml/badge.svg?branch=main)](https://github.com/kengo-k/smart-docker-build/actions/workflows/format.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
