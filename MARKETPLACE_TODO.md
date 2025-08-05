@@ -3,7 +3,7 @@
 ## 🎯 MVP (v1.0) - マーケットプレイス出品の最小構成
 
 ### 必須機能（出品のため）
-- [ ] **M1. DockerHub対応追加** - 現在GHCR のみ → GHCR + DockerHub 両対応
+- [x] **M1. DockerHub対応追加** - 現在GHCR のみ → GHCR + DockerHub 両対応
 - [x] **M2. action.yaml完成** - author, branding（アイコン・色）, 詳細description
 - [x] **M3. README.md充実** - 使用例、詳細説明、GitHub Actions バッジ ✨
 - [x] **M4. LICENSEファイル追加** - MIT推奨

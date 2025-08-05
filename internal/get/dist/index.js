@@ -33529,6 +33529,15 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 async function main() {
     const token = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('token');
     const timezone = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('timezone');
+    const registry = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry') || 'ghcr';
+    const registryUsername = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry_username');
+    const registryToken = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry_token');
+    // Validate registry parameters
+    if (registry === 'dockerhub' || registry === 'both') {
+        if (!registryUsername || !registryToken) {
+            throw new Error('registry_username and registry_token are required when using DockerHub registry');
+        }
+    }
     const buildArgs = await (0,_lib_js__WEBPACK_IMPORTED_MODULE_2__/* .generateBuildArgs */ .fQ)(token, timezone, _actions_github__WEBPACK_IMPORTED_MODULE_1__.context, process.env.GITHUB_WORKSPACE);
     if (buildArgs.length === 0) {
         console.log('ℹ️ No images to build based on current configuration and changes');
@@ -46079,7 +46088,8 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     // Get repository information
     const octokit = new dist_node.Octokit({ auth: token });
     const { repository, before, after, ref, pull_request } = githubContext.payload;
-    const isPullRequest = githubContext.eventName === 'pull_request' || githubContext.event_name === 'pull_request';
+    const isPullRequest = githubContext.eventName === 'pull_request' ||
+        githubContext.event_name === 'pull_request';
     if (!repository || !after) {
         throw new Error('Missing required GitHub context information (repository, after)');
     }

@@ -6,6 +6,18 @@ import { generateBuildArgs } from './lib.js'
 async function main(): Promise<void> {
   const token = getInput('token')
   const timezone = getInput('timezone')
+  const registry = getInput('registry') || 'ghcr'
+  const registryUsername = getInput('registry_username')
+  const registryToken = getInput('registry_token')
+
+  // Validate registry parameters
+  if (registry === 'dockerhub' || registry === 'both') {
+    if (!registryUsername || !registryToken) {
+      throw new Error(
+        'registry_username and registry_token are required when using DockerHub registry',
+      )
+    }
+  }
 
   const buildArgs = await generateBuildArgs(
     token,

@@ -73,7 +73,8 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     // Get repository information
     const octokit = new Octokit({ auth: token });
     const { repository, before, after, ref, pull_request } = githubContext.payload;
-    const isPullRequest = githubContext.eventName === 'pull_request' || githubContext.event_name === 'pull_request';
+    const isPullRequest = githubContext.eventName === 'pull_request' ||
+        githubContext.event_name === 'pull_request';
     if (!repository || !after) {
         throw new Error('Missing required GitHub context information (repository, after)');
     }
