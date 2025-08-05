@@ -135,12 +135,8 @@ The action determines image names using this priority order:
    - Repository name (only if exactly 1 Dockerfile exists)
 
 3. **Error** (multiple Dockerfiles without names)
-   ```
-   Multiple Dockerfiles found but no image name specified for worker/Dockerfile
-   Solutions:
-      - Add comment: # image: my-worker
-      - Create smart-docker-build.yml with explicit image configurations
-   ```
+   - When multiple Dockerfiles exist without image name comments, the action will fail
+   - Solutions: Add `# image: my-worker` comments or create a configuration file
 
 ## Project Structure Examples
 
@@ -196,9 +192,9 @@ watchFiles: []  # Empty = always build
 
 ## How It Works
 
-1. **Detection**: Scans repository for all Dockerfiles - files named `Dockerfile` or `Dockerfile.*` (e.g., `Dockerfile.prod`, `Dockerfile.dev`) while skipping `node_modules`, `.git`, etc.
-2. **Naming**: Determines image names using priority rules
-3. **Change Check**: For branch pushes, only builds if Dockerfile was modified
+1. **Detection**: Scans repository for all Dockerfiles - files named `Dockerfile` or `Dockerfile.*` (e.g., `Dockerfile.prod`, `Dockerfile.dev`) while skipping `node_modules`, `.git`, `.github`, `dist`, and `build` directories
+2. **Naming**: Determines image names using priority rules (supports case-insensitive `# image:` comments in first 10 lines)
+3. **Change Check**: For branch pushes, builds when files matching `watchFiles` patterns are modified (empty `watchFiles` means always build)
 4. **Tag Generation**: Creates tags from templates with variable substitution
 5. **Build & Push**: Uses Docker to build and push to GHCR
 
