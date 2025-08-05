@@ -604,7 +604,7 @@ describe('Registry support', () => {
   test('should validate single registry approach', () => {
     // This test verifies we only support one registry at a time
     const registries = ['ghcr', 'dockerhub']
-    
+
     // Each registry is handled independently
     expect(registries).toHaveLength(2)
     expect(registries).toContain('ghcr')
