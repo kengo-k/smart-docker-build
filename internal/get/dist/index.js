@@ -46074,8 +46074,8 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     // Get repository information
     const octokit = new dist_node.Octokit({ auth: token });
     const { repository, before, after, ref } = githubContext.payload;
-    if (!repository || !before || !after || !ref) {
-        throw new Error('Missing required GitHub context information (repository, before, after, ref)');
+    if (!repository || !after || !ref) {
+        throw new Error('Missing required GitHub context information (repository, after, ref)');
     }
     debugLog('gitref: ', ref);
     const { branch, tag } = parseGitRef(ref);
@@ -46083,10 +46083,20 @@ async function generateBuildArgs(token, timezone, githubContext, workingDir) {
     debugLog('before: ', before);
     debugLog('after: ', after);
     debugLog('tag: ', tag);
-    // Get repository changes for change detection
-    const compare = await getRepositoryChanges(octokit, repository, before, after);
-    const changedFiles = compare.data.files || [];
-    debugLog('changedFiles: ', changedFiles.map((file) => file.filename));
+    // Get repository changes for change detection (only for branch pushes)
+    // For tag creation events, 'before' is typically not set, so we skip change detection
+    let changedFiles = [];
+    if (branch && before) {
+        const compare = await getRepositoryChanges(octokit, repository, before, after);
+        changedFiles = compare.data.files || [];
+        debugLog('changedFiles: ', changedFiles.map((file) => file.filename));
+    }
+    else if (tag) {
+        debugLog('Tag push detected - skipping change detection (before context not available)');
+    }
+    else if (branch && !before) {
+        debugLog('Branch push without before context - skipping change detection');
+    }
     // Auto-detect Dockerfiles and determine images to build
     const dockerfiles = findDockerfiles(workingDir);
     debugLog('dockerfiles: ', dockerfiles);
@@ -46344,7 +46354,7 @@ async function ensureUniqueTag(tags, templateVariables, octokit, imageName) {
         const exists = await checkImageTagExists(octokit, imageName, tag);
         debugLog('tag exists?: ', { imageName, tag, exists });
         if (exists) {
-            throw new Error(`Image tag '${imageName}:${tag}' already exists in registry`);
+            throw new Error(`❌ Image tag '${imageName}:${tag}' already exists in registry`);
         }
     }
 }
@@ -46386,7 +46396,7 @@ function validateTemplateVariables(templates, availableVariables) {
         }
     }
     if (missingVariables.length > 0) {
-        throw new Error(`Invalid template variables found: {${missingVariables.join('}, {')}}`);
+        throw new Error(`❌ Invalid template variables found: {${missingVariables.join('}, {')}}`);
     }
 }
 // Generate tags from templates
