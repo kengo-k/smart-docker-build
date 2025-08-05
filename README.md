@@ -44,6 +44,8 @@ jobs:
 - Build and push to `ghcr.io/username/repo-name`
 - Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
 
+> 💡 **See it in action**: Check out [smart-docker-build-demo](https://github.com/kengo-k/smart-docker-build-demo) for a complete working example with multiple Dockerfiles, custom configurations, and live GitHub Actions workflows.
+
 ## Configuration Methods
 
 There are only **2 simple ways** to configure this action:
