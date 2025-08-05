@@ -12,7 +12,8 @@
 ### 差別化のための最小機能
 - [ ] **M5. 基本マルチプラットフォーム** - linux/amd64, linux/arm64 のみ対応
 - [x] **M6. タグ戦略改善とUX改善** - スマートDockerfile検出、テンプレートタグ、設定ファイル対応 🚀
-- [ ] **M9. ビルドキャッシュ機能** - GitHub Actions Cache統合でビルド高速化 ⚡
+- [x] **M9. ビルドキャッシュ機能** - GitHub Actions Cache統合でビルド高速化 ⚡
+- [x] **M11. Pull Request用プレビュータグ** - PR番号ベースのタグ生成
 
 ### 品質保証
 - [x] **M7. テスト拡充** - 新機能テスト追加（計25個テスト通過） ✅
@@ -22,7 +23,6 @@
 ## 🚀 v1.1 - 基本機能拡張（需要高・実装容易）
 
 ### 高需要・実装容易
-- [ ] **V1-1. Pull Request用プレビュータグ** - PR番号ベースのタグ生成
 - [ ] **V1-2. AWS ECR 対応** - 最大シェアのクラウドレジストリ
 - [ ] **V1-3. ブランチフィルター機能** - 特定ブランチのみビルド (only/except指定)
 
@@ -32,6 +32,7 @@
 - [ ] **V2-1. BuildKit/Buildx 高度統合** - シークレット管理、SSH forwarding
 - [ ] **V2-2. Azure Container Registry (ACR) 対応**
 - [ ] **V2-3. Google Container Registry (GCR) 対応**
+- [ ] **V2-4. Dockerfile検索除外ディレクトリ設定** - excludeDirectoriesパラメータ追加、デフォルト除外処理
 
 ## 🏢 v2.0 - エンタープライズ対応（セキュリティ・ガバナンス）
 
