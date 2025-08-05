@@ -112,19 +112,18 @@ Smart Docker Build supports multiple container registries for pushing your Docke
 ```yaml
 - uses: kengo-k/smart-docker-build@v1
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+    repository_token: ${{ secrets.GITHUB_TOKEN }}
     # registry: "ghcr" (default)
-    token: ${{ secrets.GITHUB_TOKEN }}  # Same as github_token for GHCR
 ```
 
 ### DockerHub
 ```yaml
 - uses: kengo-k/smart-docker-build@v1
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}  # For repository access
+    repository_token: ${{ secrets.GITHUB_TOKEN }}  # For repository access
     registry: "dockerhub"
-    username: ${{ secrets.DOCKERHUB_USERNAME }}
-    token: ${{ secrets.DOCKERHUB_TOKEN }}
+    registry_username: ${{ secrets.DOCKERHUB_USERNAME }}
+    registry_token: ${{ secrets.DOCKERHUB_TOKEN }}
 ```
 
 ### Registry Comparison
@@ -138,10 +137,10 @@ Smart Docker Build supports multiple container registries for pushing your Docke
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `github_token` | ✅ | - | GitHub token for repository access |
+| `repository_token` | ✅ | - | GitHub token for repository access and GHCR authentication |
 | `registry` | ❌ | `ghcr` | Container registry: `ghcr` or `dockerhub` |
-| `username` | ❌ | - | Registry username (required for DockerHub) |
-| `token` | ❌ | - | Registry authentication token (GitHub token for GHCR, DockerHub token for DockerHub) |
+| `registry_username` | ❌ | - | Registry username (required for DockerHub) |
+| `registry_token` | ❌ | - | Registry authentication token (required for DockerHub) |
 | `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
 
 ### Custom Timezone Example
@@ -149,8 +148,7 @@ Smart Docker Build supports multiple container registries for pushing your Docke
 ```yaml
 - uses: kengo-k/smart-docker-build@v1
   with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    token: ${{ secrets.GITHUB_TOKEN }}
+    repository_token: ${{ secrets.GITHUB_TOKEN }}
     timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
 ```
 

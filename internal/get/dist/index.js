@@ -33527,18 +33527,18 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 
 
 async function main() {
-    const token = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('token');
+    const repositoryToken = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('repository_token');
     const timezone = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('timezone');
     const registry = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry') || 'ghcr';
     const registryUsername = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry_username');
     const registryToken = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput)('registry_token');
     // Validate registry parameters
-    if (registry === 'dockerhub' || registry === 'both') {
+    if (registry === 'dockerhub') {
         if (!registryUsername || !registryToken) {
             throw new Error('registry_username and registry_token are required when using DockerHub registry');
         }
     }
-    const buildArgs = await (0,_lib_js__WEBPACK_IMPORTED_MODULE_2__/* .generateBuildArgs */ .fQ)(token, timezone, _actions_github__WEBPACK_IMPORTED_MODULE_1__.context, process.env.GITHUB_WORKSPACE);
+    const buildArgs = await (0,_lib_js__WEBPACK_IMPORTED_MODULE_2__/* .generateBuildArgs */ .fQ)(repositoryToken, timezone, _actions_github__WEBPACK_IMPORTED_MODULE_1__.context, process.env.GITHUB_WORKSPACE);
     if (buildArgs.length === 0) {
         console.log('ℹ️ No images to build based on current configuration and changes');
         (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__.setOutput)('build_args', JSON.stringify([]));

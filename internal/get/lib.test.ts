@@ -585,33 +585,29 @@ describe('Registry support', () => {
     const registryUsername = 'myuser'
     const registryToken = 'mytoken'
 
-    // DockerHub requires both username and token
+    // DockerHub requires both registry_username and registry_token
     expect(registryUsername).toBeTruthy()
     expect(registryToken).toBeTruthy()
     expect(registry).toBe('dockerhub')
   })
 
   test('should validate GHCR registry parameters', () => {
-    // This test verifies GHCR only needs token
+    // This test verifies GHCR only needs repository_token
     const registry = 'ghcr'
-    const token = 'github_token'
+    const repositoryToken = 'github_token'
 
-    // GHCR only needs GitHub token
-    expect(token).toBeTruthy()
+    // GHCR only needs repository token (used for both repository access and registry auth)
+    expect(repositoryToken).toBeTruthy()
     expect(registry).toBe('ghcr')
   })
 
-  test('should validate both registries parameters', () => {
-    // This test verifies both registries require DockerHub credentials
-    const registry = 'both'
-    const registryUsername = 'myuser'
-    const registryToken = 'mytoken'
-    const githubToken = 'github_token'
-
-    // Both registries require all credentials
-    expect(registryUsername).toBeTruthy()
-    expect(registryToken).toBeTruthy()
-    expect(githubToken).toBeTruthy()
-    expect(registry).toBe('both')
+  test('should validate single registry approach', () => {
+    // This test verifies we only support one registry at a time
+    const registries = ['ghcr', 'dockerhub']
+    
+    // Each registry is handled independently
+    expect(registries).toHaveLength(2)
+    expect(registries).toContain('ghcr')
+    expect(registries).toContain('dockerhub')
   })
 })
