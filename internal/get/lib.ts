@@ -11,6 +11,7 @@ import { Octokit } from '@octokit/rest'
 interface ProjectConfig {
   imageTagsOnTagPushed: string[] | null
   imageTagsOnBranchPushed: string[] | null
+  imageTagsOnPullRequest: string[] | null
   watchFiles: string[]
 }
 
@@ -20,6 +21,7 @@ interface DockerfileConfig {
   imageName?: string
   imageTagsOnTagPushed?: string[] | null
   imageTagsOnBranchPushed?: string[] | null
+  imageTagsOnPullRequest?: string[] | null
   watchFiles?: string[]
 }
 
@@ -30,6 +32,7 @@ interface ImageBuildSpec {
   imageName: string
   imageTagsOnTagPushed: string[] | null
   imageTagsOnBranchPushed: string[] | null
+  imageTagsOnPullRequest: string[] | null
   watchFiles: string[]
 }
 
@@ -46,6 +49,7 @@ interface TemplateVariables {
   branch?: string
   sha?: string
   timestamp?: string
+  pr_number?: string
 }
 
 interface GitRef {
@@ -64,7 +68,17 @@ interface GitHubContext {
     before?: string
     after?: string
     ref?: string
+    pull_request?: {
+      number: number
+      head?: {
+        sha: string
+        ref: string
+      }
+      [key: string]: any
+    }
   }
+  eventName?: string
+  event_name?: string
 }
 
 function debugLog(message: string, obj?: any): void {
@@ -99,6 +113,7 @@ const configSchema = z.object({
   imageTagsOnBranchPushed: tagConfigSchema
     .optional()
     .default(['{branch}-{timestamp}-{sha}', 'latest']),
+  imageTagsOnPullRequest: tagConfigSchema.optional().default(null),
   watchFiles: z.array(z.string()).optional().default([]),
 })
 
@@ -124,6 +139,7 @@ export async function generateBuildArgs(
     'branch',
     'sha',
     'timestamp',
+    'pr_number',
   ]
   if (projectConfig.imageTagsOnTagPushed !== null) {
     validateTemplateVariables(
@@ -137,26 +153,58 @@ export async function generateBuildArgs(
       availableVariables,
     )
   }
-
-  // Get repository information
-  const octokit = new Octokit({ auth: token })
-  const { repository, before, after, ref } = githubContext.payload
-
-  if (!repository || !after || !ref) {
-    throw new Error(
-      'Missing required GitHub context information (repository, after, ref)',
+  if (projectConfig.imageTagsOnPullRequest !== null) {
+    validateTemplateVariables(
+      projectConfig.imageTagsOnPullRequest,
+      availableVariables,
     )
   }
 
-  debugLog('gitref: ', ref)
-  const { branch, tag } = parseGitRef(ref)
-  debugLog('branch: ', branch)
+  // Get repository information
+  const octokit = new Octokit({ auth: token })
+  const { repository, before, after, ref, pull_request } = githubContext.payload
+  const isPullRequest =
+    githubContext.eventName === 'pull_request' ||
+    githubContext.event_name === 'pull_request'
+
+  if (!repository || !after) {
+    throw new Error(
+      'Missing required GitHub context information (repository, after)',
+    )
+  }
+
+  // For pull requests, use different logic
+  let branch: string | null = null
+  let tag: string | null = null
+  let prNumber: number | null = null
+
+  if (isPullRequest && pull_request) {
+    prNumber = pull_request.number
+    branch = null // PR doesn't use branch logic
+    tag = null
+    debugLog('pull request number: ', prNumber)
+    if (pull_request.head?.sha) {
+      debugLog('pull request head sha: ', pull_request.head.sha)
+    }
+  } else if (ref) {
+    const gitRef = parseGitRef(ref)
+    branch = gitRef.branch
+    tag = gitRef.tag
+    debugLog('gitref: ', ref)
+    debugLog('branch: ', branch)
+    debugLog('tag: ', tag)
+  } else {
+    throw new Error(
+      'Missing required GitHub context information (ref or pull_request)',
+    )
+  }
+
   debugLog('before: ', before)
   debugLog('after: ', after)
-  debugLog('tag: ', tag)
+  debugLog('isPullRequest: ', isPullRequest)
 
   // Get repository changes for change detection (only for branch pushes)
-  // For tag creation events, 'before' is typically not set, so we skip change detection
+  // For tag creation events and PRs, 'before' is typically not set, so we skip change detection
   let changedFiles: { filename: string }[] = []
   if (branch && before) {
     const compare = await getRepositoryChanges(
@@ -173,6 +221,10 @@ export async function generateBuildArgs(
   } else if (tag) {
     debugLog(
       'Tag push detected - skipping change detection (before context not available)',
+    )
+  } else if (isPullRequest) {
+    debugLog(
+      'Pull request detected - skipping change detection (using PR-specific build logic)',
     )
   } else if (branch && !before) {
     debugLog('Branch push without before context - skipping change detection')
@@ -202,6 +254,10 @@ export async function generateBuildArgs(
       imageTagsOnBranchPushed: resolveConfig(
         dockerfileConfig.imageTagsOnBranchPushed,
         projectConfig.imageTagsOnBranchPushed,
+      ),
+      imageTagsOnPullRequest: resolveConfig(
+        dockerfileConfig.imageTagsOnPullRequest,
+        projectConfig.imageTagsOnPullRequest,
       ),
       watchFiles: resolveConfig(
         dockerfileConfig.watchFiles,
@@ -236,6 +292,10 @@ export async function generateBuildArgs(
           dockerfileConfig.imageTagsOnBranchPushed,
           projectConfig.imageTagsOnBranchPushed,
         ),
+        imageTagsOnPullRequest: resolveConfig(
+          dockerfileConfig.imageTagsOnPullRequest,
+          projectConfig.imageTagsOnPullRequest,
+        ),
         watchFiles: resolveConfig(
           dockerfileConfig.watchFiles,
           projectConfig.watchFiles,
@@ -251,6 +311,7 @@ export async function generateBuildArgs(
     tag,
     timezone,
     after,
+    prNumber,
   )
 
   for (const spec of imageBuildSpecs) {
@@ -302,6 +363,22 @@ export async function generateBuildArgs(
           })
         }
       }
+    } else if (
+      isPullRequest &&
+      prNumber &&
+      spec.imageTagsOnPullRequest !== null
+    ) {
+      // Pull request: build with PR tags (always build, no change detection, allow overwrite)
+      // Note: We don't call ensureUniqueTag for PR tags since they should be allowed to overwrite
+      const tags = generateTags(spec.imageTagsOnPullRequest, templateVariables)
+
+      for (const tagName of tags) {
+        outputs.push({
+          dockerfilePath: spec.dockerfilePath,
+          imageName: spec.imageName,
+          imageTag: tagName,
+        })
+      }
     }
   }
 
@@ -352,6 +429,7 @@ export function loadProjectConfig(workingDir: string): ProjectConfig {
   return {
     imageTagsOnTagPushed: ['{tag}'],
     imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+    imageTagsOnPullRequest: null, // Disabled by default
     watchFiles: [], // Empty by default - means always build
   }
 }
@@ -463,6 +541,33 @@ export function extractDockerfileConfig(
       continue
     }
 
+    // imageTagsOnPullRequest configuration
+    const pullRequestMatch = line.match(/^#\s*imageTagsOnPullRequest:\s*(.+)$/)
+    if (pullRequestMatch) {
+      const value = pullRequestMatch[1].trim()
+      if (value === 'null') {
+        result.imageTagsOnPullRequest = null
+      } else {
+        let parsed
+        try {
+          parsed = JSON.parse(value)
+        } catch (error) {
+          throw new Error(
+            `❌ Invalid JSON syntax for imageTagsOnPullRequest in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`,
+          )
+        }
+
+        if (!Array.isArray(parsed)) {
+          throw new Error(
+            `❌ imageTagsOnPullRequest must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`,
+          )
+        }
+
+        result.imageTagsOnPullRequest = parsed
+      }
+      continue
+    }
+
     // watchFiles configuration
     const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/)
     if (watchFilesMatch) {
@@ -542,14 +647,15 @@ export async function ensureUniqueTag(
   templateVariables: TemplateVariables,
   octokit: Octokit,
   imageName: string,
+  allowOverwrite: boolean = false,
 ): Promise<void> {
   // Generate final tags from templates
   const finalTags = generateTags(tags, templateVariables)
 
-  // Check each tag for existence (skip 'latest' as it's meant to be overwritten)
+  // Check each tag for existence
   for (const tag of finalTags) {
-    if (tag === 'latest') {
-      continue // Allow overwriting 'latest' tag
+    if (tag === 'latest' || allowOverwrite) {
+      continue // Allow overwriting 'latest' tag or when explicitly allowed (e.g., PR tags)
     }
 
     const exists = await checkImageTagExists(octokit, imageName, tag)
@@ -639,6 +745,7 @@ export function createTemplateVariables(
   tag: string | null,
   timezone: string,
   sha: string,
+  prNumber?: number | null,
 ): TemplateVariables {
   const variables: TemplateVariables = {
     sha: sha.substring(0, 7), // Short SHA
@@ -650,6 +757,10 @@ export function createTemplateVariables(
 
   if (tag) {
     variables.tag = tag
+  }
+
+  if (prNumber) {
+    variables.pr_number = prNumber.toString()
   }
 
   if (timezone) {

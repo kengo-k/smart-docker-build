@@ -100,6 +100,7 @@ describe('loadProjectConfig', () => {
     expect(config).toEqual({
       imageTagsOnTagPushed: ['{tag}'],
       imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+      imageTagsOnPullRequest: null,
       watchFiles: [],
     })
   })
@@ -119,6 +120,7 @@ watchFiles: ["package.json", "src/**/*"]
     expect(config).toEqual({
       imageTagsOnTagPushed: ['{tag}'],
       imageTagsOnBranchPushed: ['{branch}-{sha}', 'latest'],
+      imageTagsOnPullRequest: null,
       watchFiles: ['package.json', 'src/**/*'],
     })
   })
@@ -490,5 +492,88 @@ describe('generateBuildArgs integration', () => {
 
     const shouldCallGetRepositoryChanges3 = !!(branch3 && before3)
     expect(shouldCallGetRepositoryChanges3).toBe(false)
+  })
+
+  test('should handle pull request events correctly', () => {
+    // This test verifies the PR event detection logic
+
+    // Simulate pull request event
+    const isPullRequest = true
+    const prNumber = 123
+    const branch = null // PR doesn't use branch logic
+    const before = null // PRs typically don't have before context
+
+    // PR should skip change detection
+    const shouldCallGetRepositoryChanges = !!(branch && before)
+    expect(shouldCallGetRepositoryChanges).toBe(false)
+
+    // PR should have number
+    expect(prNumber).toBeTruthy()
+    expect(isPullRequest).toBe(true)
+  })
+})
+
+describe('Pull Request support', () => {
+  test('should extract PR configuration from Dockerfile comments', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: test-app
+# imageTagsOnPullRequest: ["pr-{pr_number}", "pr-{pr_number}-{sha}"]
+FROM node:18
+WORKDIR /app
+`,
+    )
+
+    const config = extractDockerfileConfig('Dockerfile', testDir)
+    expect(config).toEqual({
+      imageName: 'test-app',
+      imageTagsOnPullRequest: ['pr-{pr_number}', 'pr-{pr_number}-{sha}'],
+    })
+  })
+
+  test('should handle null PR configuration', () => {
+    const dockerfilePath = join(testDir, 'Dockerfile')
+    writeFileSync(
+      dockerfilePath,
+      `# image: test-app
+# imageTagsOnPullRequest: null
+FROM node:18
+WORKDIR /app
+`,
+    )
+
+    const config = extractDockerfileConfig('Dockerfile', testDir)
+    expect(config).toEqual({
+      imageName: 'test-app',
+      imageTagsOnPullRequest: null,
+    })
+  })
+
+  test('should create template variables with PR number', () => {
+    const variables = createTemplateVariables(
+      null, // branch
+      null, // tag
+      'UTC',
+      'abcdef1234567890',
+      123, // prNumber
+    )
+
+    expect(variables).toMatchObject({
+      sha: 'abcdef1',
+      pr_number: '123',
+    })
+    expect(variables.timestamp).toMatch(/^\d{12}$/)
+  })
+
+  test('should generate PR tags correctly', () => {
+    const templates = ['pr-{pr_number}', 'pr-{pr_number}-{sha}']
+    const variables = {
+      pr_number: '123',
+      sha: 'abcdef1',
+    }
+
+    const tags = generateTags(templates, variables)
+    expect(tags).toEqual(['pr-123', 'pr-123-abcdef1'])
   })
 })

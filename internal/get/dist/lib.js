@@ -41,6 +41,7 @@ const configSchema = z.object({
     imageTagsOnBranchPushed: tagConfigSchema
         .optional()
         .default(['{branch}-{timestamp}-{sha}', 'latest']),
+    imageTagsOnPullRequest: tagConfigSchema.optional().default(null),
     watchFiles: z.array(z.string()).optional().default([]),
 });
 // Generate build arguments with smart detection
@@ -58,6 +59,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
         'branch',
         'sha',
         'timestamp',
+        'pr_number',
     ];
     if (projectConfig.imageTagsOnTagPushed !== null) {
         validateTemplateVariables(projectConfig.imageTagsOnTagPushed, availableVariables);
@@ -65,20 +67,45 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     if (projectConfig.imageTagsOnBranchPushed !== null) {
         validateTemplateVariables(projectConfig.imageTagsOnBranchPushed, availableVariables);
     }
+    if (projectConfig.imageTagsOnPullRequest !== null) {
+        validateTemplateVariables(projectConfig.imageTagsOnPullRequest, availableVariables);
+    }
     // Get repository information
     const octokit = new Octokit({ auth: token });
-    const { repository, before, after, ref } = githubContext.payload;
-    if (!repository || !after || !ref) {
-        throw new Error('Missing required GitHub context information (repository, after, ref)');
+    const { repository, before, after, ref, pull_request } = githubContext.payload;
+    const isPullRequest = githubContext.eventName === 'pull_request' || githubContext.event_name === 'pull_request';
+    if (!repository || !after) {
+        throw new Error('Missing required GitHub context information (repository, after)');
     }
-    debugLog('gitref: ', ref);
-    const { branch, tag } = parseGitRef(ref);
-    debugLog('branch: ', branch);
+    // For pull requests, use different logic
+    let branch = null;
+    let tag = null;
+    let prNumber = null;
+    if (isPullRequest && pull_request) {
+        prNumber = pull_request.number;
+        branch = null; // PR doesn't use branch logic
+        tag = null;
+        debugLog('pull request number: ', prNumber);
+        if (pull_request.head?.sha) {
+            debugLog('pull request head sha: ', pull_request.head.sha);
+        }
+    }
+    else if (ref) {
+        const gitRef = parseGitRef(ref);
+        branch = gitRef.branch;
+        tag = gitRef.tag;
+        debugLog('gitref: ', ref);
+        debugLog('branch: ', branch);
+        debugLog('tag: ', tag);
+    }
+    else {
+        throw new Error('Missing required GitHub context information (ref or pull_request)');
+    }
     debugLog('before: ', before);
     debugLog('after: ', after);
-    debugLog('tag: ', tag);
+    debugLog('isPullRequest: ', isPullRequest);
     // Get repository changes for change detection (only for branch pushes)
-    // For tag creation events, 'before' is typically not set, so we skip change detection
+    // For tag creation events and PRs, 'before' is typically not set, so we skip change detection
     let changedFiles = [];
     if (branch && before) {
         const compare = await getRepositoryChanges(octokit, repository, before, after);
@@ -87,6 +114,9 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
     }
     else if (tag) {
         debugLog('Tag push detected - skipping change detection (before context not available)');
+    }
+    else if (isPullRequest) {
+        debugLog('Pull request detected - skipping change detection (using PR-specific build logic)');
     }
     else if (branch && !before) {
         debugLog('Branch push without before context - skipping change detection');
@@ -106,6 +136,7 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
             imageName: dockerfileConfig.imageName || repository.name, // Use repository name as fallback
             imageTagsOnTagPushed: resolveConfig(dockerfileConfig.imageTagsOnTagPushed, projectConfig.imageTagsOnTagPushed),
             imageTagsOnBranchPushed: resolveConfig(dockerfileConfig.imageTagsOnBranchPushed, projectConfig.imageTagsOnBranchPushed),
+            imageTagsOnPullRequest: resolveConfig(dockerfileConfig.imageTagsOnPullRequest, projectConfig.imageTagsOnPullRequest),
             watchFiles: resolveConfig(dockerfileConfig.watchFiles, projectConfig.watchFiles),
         });
     }
@@ -124,13 +155,14 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
                 imageName: dockerfileConfig.imageName,
                 imageTagsOnTagPushed: resolveConfig(dockerfileConfig.imageTagsOnTagPushed, projectConfig.imageTagsOnTagPushed),
                 imageTagsOnBranchPushed: resolveConfig(dockerfileConfig.imageTagsOnBranchPushed, projectConfig.imageTagsOnBranchPushed),
+                imageTagsOnPullRequest: resolveConfig(dockerfileConfig.imageTagsOnPullRequest, projectConfig.imageTagsOnPullRequest),
                 watchFiles: resolveConfig(dockerfileConfig.watchFiles, projectConfig.watchFiles),
             });
         }
     }
     // Generate build arguments based on git event
     const outputs = [];
-    const templateVariables = createTemplateVariables(branch, tag, timezone, after);
+    const templateVariables = createTemplateVariables(branch, tag, timezone, after, prNumber);
     for (const spec of imageBuildSpecs) {
         // Check build conditions
         if (tag && spec.imageTagsOnTagPushed !== null) {
@@ -163,6 +195,20 @@ export async function generateBuildArgs(token, timezone, githubContext, workingD
                         imageTag: tagName,
                     });
                 }
+            }
+        }
+        else if (isPullRequest &&
+            prNumber &&
+            spec.imageTagsOnPullRequest !== null) {
+            // Pull request: build with PR tags (always build, no change detection, allow overwrite)
+            // Note: We don't call ensureUniqueTag for PR tags since they should be allowed to overwrite
+            const tags = generateTags(spec.imageTagsOnPullRequest, templateVariables);
+            for (const tagName of tags) {
+                outputs.push({
+                    dockerfilePath: spec.dockerfilePath,
+                    imageName: spec.imageName,
+                    imageTag: tagName,
+                });
             }
         }
     }
@@ -200,6 +246,7 @@ export function loadProjectConfig(workingDir) {
     return {
         imageTagsOnTagPushed: ['{tag}'],
         imageTagsOnBranchPushed: ['{branch}-{timestamp}-{sha}', 'latest'],
+        imageTagsOnPullRequest: null, // Disabled by default
         watchFiles: [], // Empty by default - means always build
     };
 }
@@ -284,6 +331,28 @@ export function extractDockerfileConfig(dockerfilePath, workingDir) {
             }
             continue;
         }
+        // imageTagsOnPullRequest configuration
+        const pullRequestMatch = line.match(/^#\s*imageTagsOnPullRequest:\s*(.+)$/);
+        if (pullRequestMatch) {
+            const value = pullRequestMatch[1].trim();
+            if (value === 'null') {
+                result.imageTagsOnPullRequest = null;
+            }
+            else {
+                let parsed;
+                try {
+                    parsed = JSON.parse(value);
+                }
+                catch (error) {
+                    throw new Error(`❌ Invalid JSON syntax for imageTagsOnPullRequest in ${absolutePath}: "${value}". Expected valid JSON array like ["tag1", "tag2"].`);
+                }
+                if (!Array.isArray(parsed)) {
+                    throw new Error(`❌ imageTagsOnPullRequest must be an array in ${absolutePath}: "${value}". Expected JSON array like ["tag1", "tag2"], got ${typeof parsed}.`);
+                }
+                result.imageTagsOnPullRequest = parsed;
+            }
+            continue;
+        }
         // watchFiles configuration
         const watchFilesMatch = line.match(/^#\s*watchFiles:\s*(.+)$/);
         if (watchFilesMatch) {
@@ -334,13 +403,13 @@ export async function checkImageTagExists(octokit, imageName, tag) {
     }
 }
 // Ensure image tags are unique in registry
-export async function ensureUniqueTag(tags, templateVariables, octokit, imageName) {
+export async function ensureUniqueTag(tags, templateVariables, octokit, imageName, allowOverwrite = false) {
     // Generate final tags from templates
     const finalTags = generateTags(tags, templateVariables);
-    // Check each tag for existence (skip 'latest' as it's meant to be overwritten)
+    // Check each tag for existence
     for (const tag of finalTags) {
-        if (tag === 'latest') {
-            continue; // Allow overwriting 'latest' tag
+        if (tag === 'latest' || allowOverwrite) {
+            continue; // Allow overwriting 'latest' tag or when explicitly allowed (e.g., PR tags)
         }
         const exists = await checkImageTagExists(octokit, imageName, tag);
         debugLog('tag exists?: ', { imageName, tag, exists });
@@ -401,7 +470,7 @@ export function generateTags(templates, variables) {
     });
 }
 // Create template variables
-export function createTemplateVariables(branch, tag, timezone, sha) {
+export function createTemplateVariables(branch, tag, timezone, sha, prNumber) {
     const variables = {
         sha: sha.substring(0, 7), // Short SHA
     };
@@ -410,6 +479,9 @@ export function createTemplateVariables(branch, tag, timezone, sha) {
     }
     if (tag) {
         variables.tag = tag;
+    }
+    if (prNumber) {
+        variables.pr_number = prNumber.toString();
     }
     if (timezone) {
         const now = new Date();

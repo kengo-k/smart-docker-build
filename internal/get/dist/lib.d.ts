@@ -2,12 +2,14 @@ import { Octokit } from '@octokit/rest';
 interface ProjectConfig {
     imageTagsOnTagPushed: string[] | null;
     imageTagsOnBranchPushed: string[] | null;
+    imageTagsOnPullRequest: string[] | null;
     watchFiles: string[];
 }
 interface DockerfileConfig {
     imageName?: string;
     imageTagsOnTagPushed?: string[] | null;
     imageTagsOnBranchPushed?: string[] | null;
+    imageTagsOnPullRequest?: string[] | null;
     watchFiles?: string[];
 }
 interface ActionResult {
@@ -20,6 +22,7 @@ interface TemplateVariables {
     branch?: string;
     sha?: string;
     timestamp?: string;
+    pr_number?: string;
 }
 interface GitRef {
     branch: string | null;
@@ -36,7 +39,17 @@ interface GitHubContext {
         before?: string;
         after?: string;
         ref?: string;
+        pull_request?: {
+            number: number;
+            head?: {
+                sha: string;
+                ref: string;
+            };
+            [key: string]: any;
+        };
     };
+    eventName?: string;
+    event_name?: string;
 }
 export declare function generateBuildArgs(token: string, timezone: string, githubContext: GitHubContext, workingDir: string): Promise<ActionResult[]>;
 export declare function loadProjectConfig(workingDir: string): ProjectConfig;
@@ -63,12 +76,12 @@ export declare function getRepositoryChanges(octokit: Octokit, repository: {
     files?: import("@octokit/openapi-types").components["schemas"]["diff-entry"][];
 }, 200>>;
 export declare function checkImageTagExists(octokit: Octokit, imageName: string, tag: string): Promise<boolean>;
-export declare function ensureUniqueTag(tags: string[], templateVariables: TemplateVariables, octokit: Octokit, imageName: string): Promise<void>;
+export declare function ensureUniqueTag(tags: string[], templateVariables: TemplateVariables, octokit: Octokit, imageName: string, allowOverwrite?: boolean): Promise<void>;
 export declare function parseGitRef(ref: string): GitRef;
 export declare function isBuildRequired(watchFiles: string[], changedFiles: {
     filename: string;
 }[]): boolean;
 export declare function validateTemplateVariables(templates: string[], availableVariables: string[]): void;
 export declare function generateTags(templates: string[], variables: TemplateVariables): string[];
-export declare function createTemplateVariables(branch: string | null, tag: string | null, timezone: string, sha: string): TemplateVariables;
+export declare function createTemplateVariables(branch: string | null, tag: string | null, timezone: string, sha: string, prNumber?: number | null): TemplateVariables;
 export {};
