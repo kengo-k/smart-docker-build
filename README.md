@@ -133,6 +133,10 @@ Smart Docker Build supports multiple container registries for pushing your Docke
 | **GHCR** | GitHub Token | `ghcr.io/owner/image:tag` | Free, integrated with GitHub |
 | **DockerHub** | Username + Token | `username/image:tag` | Most popular registry |
 
+### Limitations
+
+Currently, only GHCR and DockerHub are supported. Other major registries like Amazon ECR, Azure Container Registry, and Google Container Registry are not yet supported. Support for additional registries may be added in future releases.
+
 ## Action Parameters
 
 | Parameter | Required | Default | Description |
