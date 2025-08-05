@@ -104,11 +104,44 @@ imageTagsOnBranchPushed: ["{branch}-{sha}"]        # → main-abc1234
 imageTagsOnBranchPushed: ["{branch}-{timestamp}", "latest"]  # → main-202501291430, latest
 ```
 
+## Supported Container Registries
+
+Smart Docker Build supports multiple container registries for pushing your Docker images:
+
+### GitHub Container Registry (GHCR) - Default
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    # registry: "ghcr" (default)
+    token: ${{ secrets.GITHUB_TOKEN }}  # Same as github_token for GHCR
+```
+
+### DockerHub
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}  # For repository access
+    registry: "dockerhub"
+    username: ${{ secrets.DOCKERHUB_USERNAME }}
+    token: ${{ secrets.DOCKERHUB_TOKEN }}
+```
+
+### Registry Comparison
+
+| Registry | Authentication | Image URL Format | Notes |
+|----------|---------------|------------------|-------|
+| **GHCR** | GitHub Token | `ghcr.io/owner/image:tag` | Free, integrated with GitHub |
+| **DockerHub** | Username + Token | `username/image:tag` | Most popular registry |
+
 ## Action Parameters
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `token` | ✅ | - | GitHub token for repository access and GHCR push |
+| `github_token` | ✅ | - | GitHub token for repository access |
+| `registry` | ❌ | `ghcr` | Container registry: `ghcr` or `dockerhub` |
+| `username` | ❌ | - | Registry username (required for DockerHub) |
+| `token` | ❌ | - | Registry authentication token (GitHub token for GHCR, DockerHub token for DockerHub) |
 | `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
 
 ### Custom Timezone Example
@@ -116,6 +149,7 @@ imageTagsOnBranchPushed: ["{branch}-{timestamp}", "latest"]  # → main-20250129
 ```yaml
 - uses: kengo-k/smart-docker-build@v1
   with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
     token: ${{ secrets.GITHUB_TOKEN }}
     timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
 ```
