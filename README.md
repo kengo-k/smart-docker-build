@@ -14,13 +14,12 @@ A GitHub Action that **intelligently** builds and pushes Docker images with zero
 - **Simple Configuration**: Only 2 ways to configure - project file or Dockerfile comments
 - **Smart Change Detection**: Builds when relevant files change (customizable watch patterns)
 - **Tag Protection**: Prevents accidental overwrite of existing image tags
-- **GHCR Support**: Push to GitHub Container Registry (DockerHub coming soon)
 
 ## Quick Start
 
 ### Simple Project (Zero Configuration)
 
-For projects with a single `Dockerfile` in the root:
+For projects with a single `Dockerfile`:
 
 ```yaml
 name: Build Docker Image
