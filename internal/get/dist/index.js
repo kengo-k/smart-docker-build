@@ -46318,11 +46318,27 @@ async function checkImageTagExists(octokit, imageName, tag) {
     const packageName = imageName.includes('/')
         ? imageName.split('/').pop()
         : imageName;
-    const response = await octokit.request('GET /user/packages/container/{package_name}/versions', {
-        package_name: packageName,
-    });
-    // Check if any version has the specified tag
-    return response.data.some((version) => version.metadata?.container?.tags?.includes(tag));
+    try {
+        const response = await octokit.request('GET /user/packages/container/{package_name}/versions', {
+            package_name: packageName,
+        });
+        // Check if any version has the specified tag
+        return response.data.some((version) => version.metadata?.container?.tags?.includes(tag));
+    }
+    catch (error) {
+        debugLog('checkImageTagExists error: ', {
+            imageName,
+            tag,
+            packageName,
+            status: error.status,
+            message: error.message,
+            response: error.response?.data,
+        });
+        if (error.status === 404) {
+            return false; // Package doesn't exist = tag doesn't exist
+        }
+        throw error;
+    }
 }
 // Ensure image tags are unique in registry
 async function ensureUniqueTag(tags, templateVariables, octokit, imageName) {

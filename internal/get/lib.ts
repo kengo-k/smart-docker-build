@@ -521,6 +521,14 @@ export async function checkImageTagExists(
       version.metadata?.container?.tags?.includes(tag),
     )
   } catch (error: any) {
+    debugLog('checkImageTagExists error: ', {
+      imageName,
+      tag,
+      packageName,
+      status: error.status,
+      message: error.message,
+      response: error.response?.data,
+    })
     if (error.status === 404) {
       return false // Package doesn't exist = tag doesn't exist
     }
