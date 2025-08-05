@@ -5,12 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'internal/get/**'
-      - '.github/workflows/unit-format.yml'
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'internal/get/**'
-      - '.github/workflows/unit-format.yml'
+      - '.github/workflows/format.yml'
 
 jobs:
   format:
