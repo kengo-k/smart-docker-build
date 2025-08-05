@@ -46217,10 +46217,7 @@ function findDockerfiles(workingDir) {
         for (const entry of entries) {
             const fullPath = external_path_.resolve(dir, entry.name);
             if (entry.isDirectory()) {
-                // Skip common directories we don't want to search
-                if (!['node_modules', '.git', '.github', 'dist', 'build'].includes(entry.name)) {
-                    searchDir(fullPath);
-                }
+                searchDir(fullPath);
             }
             else if (entry.name === 'Dockerfile' ||
                 entry.name.startsWith('Dockerfile.')) {
