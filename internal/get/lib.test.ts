@@ -7,7 +7,6 @@ import {
   createTemplateVariables,
   ensureUniqueTag,
   extractDockerfileConfig,
-  generateBuildArgs,
   generateTags,
   isBuildRequired,
   loadProjectConfig,
@@ -450,16 +449,16 @@ describe('generateBuildArgs integration', () => {
   test('should not call getRepositoryChanges for tag pushes', () => {
     // This test verifies that the logic correctly skips getRepositoryChanges for tag pushes
     // by testing the conditional logic directly
-    
+
     // Simulate tag push scenario
     const branch = null
     const tag = 'v1.0.0'
     const before = null // This is null for tag creation events
-    
+
     // This logic should skip the getRepositoryChanges call
     const shouldCallGetRepositoryChanges = !!(branch && before)
     expect(shouldCallGetRepositoryChanges).toBe(false)
-    
+
     // Verify tag push is detected correctly
     expect(tag).toBeTruthy()
     expect(branch).toBeFalsy()
@@ -467,28 +466,28 @@ describe('generateBuildArgs integration', () => {
 
   test('should call getRepositoryChanges only for branch pushes with before context', () => {
     // This test verifies the conditional logic for when to call getRepositoryChanges
-    
+
     // Simulate branch push with before context
     const branch1 = 'main'
     const tag1 = null
     const before1 = 'abc123'
-    
+
     const shouldCallGetRepositoryChanges1 = !!(branch1 && before1)
     expect(shouldCallGetRepositoryChanges1).toBe(true)
-    
+
     // Simulate branch push without before context
     const branch2 = 'main'
     const tag2 = null
     const before2 = null
-    
+
     const shouldCallGetRepositoryChanges2 = !!(branch2 && before2)
     expect(shouldCallGetRepositoryChanges2).toBe(false)
-    
+
     // Simulate tag push (no before context expected)
     const branch3 = null
     const tag3 = 'v1.0.0'
     const before3 = null
-    
+
     const shouldCallGetRepositoryChanges3 = !!(branch3 && before3)
     expect(shouldCallGetRepositoryChanges3).toBe(false)
   })
