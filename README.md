@@ -148,6 +148,7 @@ Currently, only GHCR and DockerHub are supported. Other major registries like Am
 | `registry_username` | ❌ | - | Registry username (required for DockerHub) |
 | `registry_token` | ❌ | - | Registry authentication token (required for DockerHub) |
 | `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
+| `execution_level` | ❌ | `full` | Execution level: `full` (build and push), `build` (build only), `plan` (show execution plan only) |
 
 ### Custom Timezone Example
 
@@ -156,6 +157,33 @@ Currently, only GHCR and DockerHub are supported. Other major registries like Am
   with:
     repository_token: ${{ secrets.GITHUB_TOKEN }}
     timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
+```
+
+### Execution Level Examples
+
+#### Full Execution (Default)
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    token: ${{ secrets.GITHUB_TOKEN }}
+    execution_level: 'full'  # Build and push images (default)
+```
+
+#### Build Only (Testing)
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    execution_level: 'build'  # Build images but skip pushing
+```
+
+#### Plan Only (Dry Run)
+```yaml
+- uses: kengo-k/smart-docker-build@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    execution_level: 'plan'  # Show what would be built without building
 ```
 
 ## Image Name Detection

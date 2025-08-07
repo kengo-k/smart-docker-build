@@ -20,10 +20,10 @@ inputs:
     description: 'Cache type: "gha" (GitHub Actions Cache) or "disabled"'
     required: false
     default: 'gha'
-  use_dryrun:
-    description: 'Enable dry run mode - builds images but skips pushing to registry'
+  execution_level:
+    description: 'Execution level: "full" (build and push), "build" (build only, skip push), "plan" (show execution plan only)'
     required: false
-    default: 'false'
+    default: 'full'
   registry:
     description: 'Container registry to push images to: "ghcr" (default) or "dockerhub"'
     required: false
@@ -39,7 +39,7 @@ runs:
   steps:
     - name: 'Set up Docker Buildx'
       uses: docker/setup-buildx-action@v3
-      if: inputs.cache_enabled == 'true' && inputs.use_dryrun != 'true'
+      if: inputs.cache_enabled == 'true' && inputs.execution_level != 'plan'
 
     - name: 'Get docker build args'
       id: js_action
@@ -55,7 +55,7 @@ runs:
         INPUT_REGISTRY_TOKEN: ${{ inputs.registry_token }}
 
     - name: Login to GHCR
-      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true' && inputs.registry == 'ghcr'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.execution_level != 'plan' && (inputs.registry == 'ghcr' || inputs.registry == 'both')
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -63,7 +63,7 @@ runs:
         password: ${{ inputs.repository_token }}
 
     - name: Login to DockerHub
-      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true' && inputs.registry == 'dockerhub'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.execution_level != 'plan' && (inputs.registry == 'dockerhub' || inputs.registry == 'both')
       uses: docker/login-action@v3
       with:
         registry: docker.io
@@ -71,11 +71,11 @@ runs:
         password: ${{ inputs.registry_token }}
 
     - name: Checkout latest commit
-      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.execution_level != 'plan'
       uses: actions/checkout@v4
 
     - name: 'Build and Push Docker Images'
-      if: steps.js_action.outputs.has_builds == 'true' && inputs.use_dryrun != 'true'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.execution_level == 'full'
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'
@@ -122,14 +122,78 @@ runs:
           exit 1
         fi
 
-    - name: 'Dry Run Summary'
-      if: inputs.use_dryrun == 'true' && steps.js_action.outputs.has_builds == 'true'
+    - name: 'Build Docker Images (No Push)'
+      if: steps.js_action.outputs.has_builds == 'true' && inputs.execution_level == 'build'
+      shell: bash
+      run: |
+        build_args='${{ steps.js_action.outputs.build_args }}'
+        success_count=0
+        failure_count=0
+        length=$(echo "$build_args" | jq '. | length')
+
+        for ((i=0; i<length; i++)); do
+          element=$(echo "$build_args" | jq -c ".[$i]")
+          path=$(echo "$element" | jq -r '.dockerfilePath')
+          name=$(echo "$element" | jq -r '.imageName')
+          tag=$(echo "$element" | jq -r '.imageTag')
+
+          if [ "${{ inputs.cache_enabled }}" = "true" ] && [ "${{ inputs.cache_type }}" = "gha" ]; then
+            cache_from="--cache-from type=gha"
+            cache_to="--cache-to type=gha,mode=max"
+            build_cmd="docker buildx build"
+          else
+            cache_from=""
+            cache_to=""
+            build_cmd="docker build"
+          fi
+
+          # Determine which registries to tag (but not push)
+          registry_urls=""
+          if [ "${{ inputs.registry }}" = "ghcr" ] || [ "${{ inputs.registry }}" = "both" ]; then
+            registry_urls="$registry_urls ghcr.io/${{ github.actor }}/$name:$tag"
+          fi
+          if [ "${{ inputs.registry }}" = "dockerhub" ] || [ "${{ inputs.registry }}" = "both" ]; then
+            registry_urls="$registry_urls ${{ inputs.registry_username }}/$name:$tag"
+          fi
+
+          # Build image with all tags (but don't push)
+          build_success=true
+          if [ "${{ inputs.registry }}" = "both" ]; then
+            # For both registries, build with multiple tags
+            if ! eval "$build_cmd $cache_from $cache_to -t ghcr.io/${{ github.actor }}/$name:$tag -t ${{ inputs.registry_username }}/$name:$tag -f $path $(dirname $path)"; then
+              build_success=false
+            fi
+          else
+            # For single registry, build with single tag
+            for registry_url in $registry_urls; do
+              if ! eval "$build_cmd $cache_from $cache_to -t $registry_url -f $path $(dirname $path)"; then
+                build_success=false
+                break
+              fi
+            done
+          fi
+
+          if [ "$build_success" = "true" ]; then
+            success_count=$((success_count + 1))
+            echo "Successfully built: $registry_urls"
+          else
+            failure_count=$((failure_count + 1))
+          fi
+        done
+
+        echo "Build completed: $success_count successful, $failure_count failed"
+        if [ $failure_count -gt 0 ] && [ $success_count -eq 0 ]; then
+          exit 1
+        fi
+
+    - name: 'Execution Plan Summary'
+      if: inputs.execution_level == 'plan' && steps.js_action.outputs.has_builds == 'true'
       shell: bash
       run: |
         build_args='${{ steps.js_action.outputs.build_args }}'
         length=$(echo "$build_args" | jq '. | length')
 
-        echo "Dry run mode enabled - would build $length image(s) to registry: ${{ inputs.registry }}"
+        echo "Plan mode enabled - would build $length image(s) to registry: ${{ inputs.registry }}"
         for ((i=0; i<length; i++)); do
           element=$(echo "$build_args" | jq -c ".[$i]")
           name=$(echo "$element" | jq -r '.imageName')
