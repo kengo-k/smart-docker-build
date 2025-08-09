@@ -225,7 +225,7 @@ watchFiles: []  # Empty = always build
 
 ## How It Works
 
-1. **Detection**: Scans repository for all Dockerfiles - files named `Dockerfile` or `Dockerfile.*` (e.g., `Dockerfile.prod`, `Dockerfile.dev`) while skipping `node_modules`, `.git`, `.github`, `dist`, and `build` directories
+1. **Detection**: Scans repository for all Dockerfiles - files named `Dockerfile` or `Dockerfile.*` (e.g., `Dockerfile.prod`, `Dockerfile.dev`) while skipping `.git` directory
 2. **Naming**: Determines image names using priority rules (supports case-insensitive `# image:` comments in first 10 lines)
 3. **Change Check**: For branch pushes, builds when files matching `watchFiles` patterns are modified (empty `watchFiles` means always build)
 4. **Tag Generation**: Creates tags from templates with variable substitution

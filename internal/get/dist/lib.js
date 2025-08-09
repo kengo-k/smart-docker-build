@@ -259,6 +259,9 @@ export function findDockerfiles(workingDir) {
         for (const entry of entries) {
             const fullPath = path.resolve(dir, entry.name);
             if (entry.isDirectory()) {
+                if (entry.name === '.git') {
+                    continue;
+                }
                 searchDir(fullPath);
             }
             else if (entry.name === 'Dockerfile' ||
