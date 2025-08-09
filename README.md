@@ -67,7 +67,7 @@ watchFiles: ["package.json", "src/**/*", "Dockerfile*"]    # Build only when the
 
 ### 2. Dockerfile Comments
 
-For projects with multiple Dockerfiles, add `# image:` comments to specify image names and optionally override tag configurations:
+Dockerfile comments serve two purposes: 1) specify explicit image names (required for multiple Dockerfiles), and 2) override project-wide settings per Dockerfile:
 
 ```dockerfile
 # image: my-api-server
