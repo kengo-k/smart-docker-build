@@ -229,7 +229,6 @@ watchFiles: []  # Empty = always build
 2. **Naming**: Determines image names from `# image:` comments or repository name for single Dockerfile
 3. **Change Check**: For branch pushes, builds when files matching `watchFiles` patterns are modified (empty `watchFiles` means always build)
 4. **Tag Generation**: Creates tags from templates with variable substitution
-5. **Build & Push**: Uses Docker to build and push to GHCR
 
 ## Advanced Examples
 
