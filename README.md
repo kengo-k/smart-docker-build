@@ -157,7 +157,7 @@ Currently, only GHCR and DockerHub are supported. Other major registries like Am
 
 ## Image Name Detection
 
-The action determines image names using this priority order:
+The action determines image names as follows:
 
 1. **Dockerfile comment** (recommended for multiple Dockerfiles)
    ```dockerfile
@@ -170,40 +170,6 @@ The action determines image names using this priority order:
 
 3. **Error** (multiple Dockerfiles without names)
    - When multiple Dockerfiles exist without image name comments, the action will fail
-
-## Project Structure Examples
-
-### Single Service
-```
-my-app/
-└── Dockerfile
-```
-**Result**: Image name `my-app` (automatic)
-
-### Multi-Service
-```
-microservices/
-├── api/
-│   └── Dockerfile          # image: user-api
-├── worker/
-│   └── Dockerfile          # image: task-worker
-└── web/
-    ├── Dockerfile.prod     # image: frontend
-    └── Dockerfile.dev      # image: frontend-dev
-```
-**Result**: Four images with specified names (supports `Dockerfile.*` patterns)
-
-### Custom Configuration
-```
-hybrid-app/
-├── smart-docker-build.yml  # Project-wide tag strategy
-├── main/
-│   └── Dockerfile          # image: main-app
-└── devcontainer/
-    └── Dockerfile          # image: my-devcontainer
-                            # imageTagsOnTagPushed: null
-```
-**Result**: Custom tags + specified names
 
 ## Default Behavior
 
