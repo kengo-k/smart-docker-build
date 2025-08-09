@@ -43,6 +43,8 @@ jobs:
 - Build and push to `ghcr.io/username/repo-name`
 - Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (tag)
 
+For advanced use cases like custom image names, multiple Dockerfiles, or tag customization, you'll need to create a [configuration file](#configuration-methods). See [Default Behavior](#default-behavior) for what happens without configuration.
+
 > 💡 **See it in action**: Check out [smart-docker-build-demo](https://github.com/kengo-k/smart-docker-build-demo) for a complete working example with multiple Dockerfiles, custom configurations, and live GitHub Actions workflows.
 
 ## Configuration Methods
