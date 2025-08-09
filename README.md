@@ -222,8 +222,6 @@ watchFiles: []  # Empty = always build
 - **Tag pushes**: Always build, tag as `{tag}`
 - **Pull requests**: No builds (disabled by default)
 - **File watching**: Always build (empty `watchFiles` means no file filtering)
-- **Registry**: GitHub Container Registry (GHCR)
-- **Timezone**: UTC
 
 ## How It Works
 
