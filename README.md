@@ -26,8 +26,7 @@ name: Build Docker Image
 on:
   push:
     branches: [main]
-  release:
-    types: [published]
+    tags: ['*']
 
 jobs:
   build:
@@ -35,14 +34,14 @@ jobs:
     steps:
       - uses: kengo-k/smart-docker-build@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          repository_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 **That's it!** The action will:
 - Detect your `Dockerfile` automatically
 - Use repository name as image name
 - Build and push to `ghcr.io/username/repo-name`
-- Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (release)
+- Generate tags like `main-202501291430-abc1234` (branch) or `v1.0.0` (tag)
 
 > 💡 **See it in action**: Check out [smart-docker-build-demo](https://github.com/kengo-k/smart-docker-build-demo) for a complete working example with multiple Dockerfiles, custom configurations, and live GitHub Actions workflows.
 
