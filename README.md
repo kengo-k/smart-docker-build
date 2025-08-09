@@ -230,35 +230,6 @@ watchFiles: []  # Empty = always build
 3. **Change Check**: For branch pushes, builds when files matching `watchFiles` patterns are modified (empty `watchFiles` means always build)
 4. **Tag Generation**: Creates tags from templates with variable substitution
 
-## Advanced Examples
-
-### Release-Only Builds
-```yaml
-# smart-docker-build.yml
-imageTagsOnBranchPushed: null  # Skip branch builds
-imageTagsOnTagPushed: ["{tag}"]  # Only build on releases
-```
-
-### Multiple Tags per Push
-```yaml
-# smart-docker-build.yml
-imageTagsOnTagPushed: ["{tag}", "stable"]
-imageTagsOnBranchPushed: ["{branch}-{sha}", "latest", "{branch}-latest"]
-```
-
-### Development vs Production
-```yaml
-# smart-docker-build.yml
-# Development builds
-imageTagsOnBranchPushed: ["dev-{branch}-{timestamp}", "latest"]
-
-# Production releases
-imageTagsOnTagPushed: ["{tag}", "production"]
-
-# Watch specific files for development workflow
-watchFiles: ["package.json", "src/**/*", "Dockerfile*"]
-```
-
 ## Contributing
 
 Issues and pull requests are welcome! Please see our [contributing guidelines](CONTRIBUTING.md).
