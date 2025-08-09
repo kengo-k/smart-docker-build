@@ -87,7 +87,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu
 WORKDIR /workspace
 # ... rest of your Dockerfile
 ```
-**Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change (no images built on tag push or pull request)
+**Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change (no images built on tag push or pull request). Will error if `v1.0` tag already exists.
 
 ## Tag Template Variables
 
