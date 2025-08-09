@@ -99,6 +99,7 @@ Customize your image tags using these variables:
 | `{branch}` | Branch name | `main`, `feature-auth` |
 | `{sha}` | Short commit SHA | `abc1234` |
 | `{timestamp}` | Build timestamp | `202501291430` |
+| `{pr_number}` | Pull request number | `123`, `456` |
 
 ### Tag Examples
 
@@ -107,6 +108,7 @@ imageTagsOnTagPushed: ["{tag}"]                    # → v1.0.0
 imageTagsOnTagPushed: ["{tag}", "latest"]          # → v1.0.0, latest
 imageTagsOnBranchPushed: ["{branch}-{sha}"]        # → main-abc1234
 imageTagsOnBranchPushed: ["{branch}-{timestamp}", "latest"]  # → main-202501291430, latest
+imageTagsOnPullRequest: ["pr-{pr_number}-{sha}"]   # → pr-123-abc1234
 ```
 
 ## Supported Container Registries
