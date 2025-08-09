@@ -59,6 +59,7 @@ Create `smart-docker-build.yml` in your project root for custom tag templates:
 # Image tag generation templates
 imageTagsOnTagPushed: ["{tag}"]                           # Git tag pushes
 imageTagsOnBranchPushed: ["{branch}-{timestamp}-{sha}", "latest"]  # Branch pushes
+imageTagsOnPullRequest: ["pr-{pr_number}-{sha}"]          # Pull request builds
 
 # File watching (optional)
 watchFiles: ["package.json", "src/**/*", "Dockerfile*"]    # Build only when these files change
