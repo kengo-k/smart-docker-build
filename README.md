@@ -75,7 +75,7 @@ FROM node:18
 WORKDIR /app
 # ... rest of your Dockerfile
 ```
-**Result**: Creates `my-api-server:v1.0.0` on tag push, `my-api-server:main-202501291430-abc1234` and `my-api-server:latest` on branch push
+**Result**: Creates `my-api-server:v1.0.0` on tag push, `my-api-server:main-202501291430-abc1234` and `my-api-server:latest` on branch push, `my-api-server:pr-123-abc1234` on pull request
 
 ```dockerfile
 # image: my-devcontainer
