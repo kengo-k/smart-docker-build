@@ -170,7 +170,6 @@ The action determines image names using this priority order:
 
 3. **Error** (multiple Dockerfiles without names)
    - When multiple Dockerfiles exist without image name comments, the action will fail
-   - Solutions: Add `# image: my-worker` comments or create a configuration file
 
 ## Project Structure Examples
 
@@ -214,12 +213,14 @@ When no `smart-docker-build.yml` configuration file exists, the action uses thes
 # Default configuration (equivalent to no config file)
 imageTagsOnTagPushed: ["{tag}"]
 imageTagsOnBranchPushed: ["{branch}-{timestamp}-{sha}", "latest"]
+imageTagsOnPullRequest: null  # Disabled by default
 watchFiles: []  # Empty = always build
 ```
 
 **Behavior**:
 - **Branch pushes**: Always build, tag as `{branch}-{timestamp}-{sha}` and `latest`
 - **Tag pushes**: Always build, tag as `{tag}`
+- **Pull requests**: No builds (disabled by default)
 - **File watching**: Always build (empty `watchFiles` means no file filtering)
 - **Registry**: GitHub Container Registry (GHCR)
 - **Timezone**: UTC
