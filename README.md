@@ -81,12 +81,13 @@ WORKDIR /app
 # image: my-devcontainer
 # imageTagsOnTagPushed: null
 # imageTagsOnBranchPushed: ["v1.0"]
+# imageTagsOnPullRequest: null
 # watchFiles: ["Dockerfile", ".devcontainer/**/*"]
 FROM mcr.microsoft.com/devcontainers/base:ubuntu
 WORKDIR /workspace
 # ... rest of your Dockerfile
 ```
-**Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change
+**Result**: Creates `my-devcontainer:v1.0` on branch push only when Dockerfile or .devcontainer files change (no images built on tag push or pull request)
 
 ## Tag Template Variables
 
