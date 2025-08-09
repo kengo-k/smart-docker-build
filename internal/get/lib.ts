@@ -446,7 +446,7 @@ export function findDockerfiles(workingDir: string): string[] {
 
       if (entry.isDirectory()) {
         if (entry.name === '.git') {
-          continue;
+          continue
         }
         searchDir(fullPath)
       } else if (
@@ -481,8 +481,7 @@ export function extractDockerfileConfig(
 
   for (const line of lines.slice(0, 10)) {
     // Check first 10 lines
-    // Support both "Image:" and "image:" (case insensitive)
-    const imageMatch = line.match(/^#\s*[Ii]mage:\s*(.+)$/)
+    const imageMatch = line.match(/^#\s*image:\s*(.+)$/)
     if (imageMatch) {
       result.imageName = imageMatch[1].trim()
       continue
