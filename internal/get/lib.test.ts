@@ -132,11 +132,11 @@ describe('extractDockerfileConfig', () => {
     expect(config).toEqual({})
   })
 
-  test('should extract basic image name (legacy format)', () => {
+  test('should extract basic image name', () => {
     const dockerfilePath = join(testDir, 'Dockerfile')
     writeFileSync(
       dockerfilePath,
-      `# Image: my-app
+      `# image: my-app
 FROM node:18
 WORKDIR /app`,
     )
