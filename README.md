@@ -120,7 +120,6 @@ Smart Docker Build supports multiple container registries for pushing your Docke
 - uses: kengo-k/smart-docker-build@v1
   with:
     repository_token: ${{ secrets.GITHUB_TOKEN }}
-    # registry: "ghcr" (default)
 ```
 
 ### DockerHub
@@ -132,13 +131,6 @@ Smart Docker Build supports multiple container registries for pushing your Docke
     registry_username: ${{ secrets.DOCKERHUB_USERNAME }}
     registry_token: ${{ secrets.DOCKERHUB_TOKEN }}
 ```
-
-### Registry Comparison
-
-| Registry | Authentication | Image URL Format | Notes |
-|----------|---------------|------------------|-------|
-| **GHCR** | GitHub Token | `ghcr.io/owner/image:tag` | Free, integrated with GitHub |
-| **DockerHub** | Username + Token | `username/image:tag` | Most popular registry |
 
 ### Limitations
 
@@ -153,7 +145,6 @@ Currently, only GHCR and DockerHub are supported. Other major registries like Am
 | `registry_username` | ❌ | - | Registry username (required for DockerHub) |
 | `registry_token` | ❌ | - | Registry authentication token (required for DockerHub) |
 | `timezone` | ❌ | `UTC` | Timezone for `{timestamp}` variable |
-| `execution_level` | ❌ | `full` | Execution level: `full` (build and push), `build` (build only), `plan` (show execution plan only) |
 
 ### Custom Timezone Example
 
@@ -162,33 +153,6 @@ Currently, only GHCR and DockerHub are supported. Other major registries like Am
   with:
     repository_token: ${{ secrets.GITHUB_TOKEN }}
     timezone: 'Asia/Tokyo'  # Affects {timestamp} variable
-```
-
-### Execution Level Examples
-
-#### Full Execution (Default)
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    token: ${{ secrets.GITHUB_TOKEN }}
-    execution_level: 'full'  # Build and push images (default)
-```
-
-#### Build Only (Testing)
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    execution_level: 'build'  # Build images but skip pushing
-```
-
-#### Plan Only (Dry Run)
-```yaml
-- uses: kengo-k/smart-docker-build@v1
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    execution_level: 'plan'  # Show what would be built without building
 ```
 
 ## Image Name Detection
